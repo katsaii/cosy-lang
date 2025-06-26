@@ -1,0 +1,11 @@
+[package]
+name = "cosy"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+libcosyc = { path = "../libcosyc" }
+
+[dependencies.clap]
+version = "4.5.29"
+features = ["derive", "suggestions"]
