@@ -1,5 +1,7 @@
 mod cli;
+mod dev;
 
-fn main() {
+pub fn main() {
     cli::execute();
+    //dev::main();
 }

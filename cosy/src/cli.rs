@@ -1,6 +1,6 @@
 mod cmd_run;
 
-use clap::{ Parser, Subcommand };
+use clap::{ Parser, Subcommand, Args };
 
 /// The Cosy compiler! /(.@ w @.) b
 #[derive(Parser)]
@@ -14,19 +14,13 @@ struct Cosyc {
 
 #[derive(Subcommand)]
 enum CosycCommand {
-    /// Builds the package and immediately runs its entrypoint.
-    Run {
-        /// Path to the package to build (defaults to the working directory):
-        ///  * If the path is a `.cosy` file, then that file will act as the entrypoint.
-        ///  * If the path is a directory, then a file named `main.cosy` will be used as the entrypoint.
-        #[arg(verbatim_doc_comment)]
-        package_path : Option<String>,
-    },
+    Run(cmd_run::Args),
 }
 
-pub fn execute() -> () {
+#[allow(dead_code)]
+pub(super) fn execute() -> () {
     let cosyc_args = Cosyc::parse();
     return match cosyc_args.command {
-        CosycCommand::Run { package_path } => cmd_run::execute(package_path), 
+        CosycCommand::Run(args) => cmd_run::execute(args),
     };
 }
