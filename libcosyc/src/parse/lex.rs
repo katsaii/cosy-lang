@@ -23,7 +23,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// Advances the lexer, returning the most recently peeked token.
-    pub fn advance(&mut self) -> TokenSpan {
+    pub fn next(&mut self) -> TokenSpan {
         let peeked_new = self.cursor.read_token();
         mem::replace(&mut self.peeked, peeked_new)
     }
@@ -80,20 +80,45 @@ impl<'a> Cursor<'a> {
             '}' => Token::RBrace,
             '=' => Token::Equal,
             ':' => {
-                // TODO :: colon colon
-                Token::Colon
+                if self.peek_1.1 == ':' {
+                    self.next();
+                    Token::ColonColon
+                } else {
+                    Token::Colon
+                }
             },
             '.' => {
-                // TODO :: ...
-                Token::Dot
+                if self.peek_1.1 == '.' && self.peek_2.1 == '.' {
+                    self.next();
+                    self.next();
+                    Token::LineContinue
+                } else {
+                    Token::Colon
+                }
             },
             ',' => Token::Comma,
+            ';' if self.peek_1.1 == ';' => {
+                self.next();
+                Token::LineBreak { implicit : false }
+            },
+            '-' if self.peek_1.1 == '-' => {
+                self.next();
+                self.next_while(|x| !(is_eol(x) || is_eof(x)));
+                Token::Comment
+            },
             // identifiers
             x if x == '_' || is_alpha(x) => {
                 let is_hole = x == '_';
                 self.next_while(|x| x == '_' || is_alpha(x) || is_digit(x));
                 self.next_while(|x| x == '\''); // identifiers can end in '
-                Token::Id { is_hole }
+                match &self.src[offset_start..self.peek_1.0] {
+                    "begin" => Token::Begin,
+                    "end" => Token::End,
+                    "var" => Token::Var,
+                    "fn" => Token::Fn,
+                    "mod" => Token::Mod,
+                    _ => Token::Id { is_hole }
+                }
             },
             '`' => {
                 self.next_while(|x| !(x == '`' || is_eol(x) || is_whitespace(x)));
@@ -120,11 +145,11 @@ impl<'a> Cursor<'a> {
                         _ => Token::NumIntegral,
                     }
                 }
-            }
+            },
             // miscellaneous
             x if is_whitespace(x) => {
                 self.next_while(is_whitespace);
-                Token::Whitespace
+                return self.read_token();
             },
             x if is_eol(x) => Token::LineBreak { implicit : true },
             x if is_eof(x) => Token::EoF,

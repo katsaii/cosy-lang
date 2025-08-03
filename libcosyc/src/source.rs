@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use std::{
     env, fs, cmp, fmt, ops,
     ffi::{ OsStr, OsString },

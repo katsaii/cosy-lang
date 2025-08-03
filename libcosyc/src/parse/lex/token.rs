@@ -30,41 +30,8 @@ pub enum Token {
     Mod,
     // miscellaneous
     Comment,
-    Whitespace,
     LineBreak { implicit : bool },
-    LineContinue { dot_count : usize },
+    LineContinue,
     EoF,
     Unknown(char),
-}
-
-impl Token {
-    /// Returns whether the token is a valid identifier.
-    pub fn is_identifier(&self) -> bool {
-        matches!(self, Self::Id { .. } | Self::IdRaw { .. })
-    }
-
-    /// Returns whether this token is an underscore.
-    pub fn is_hole(&self) -> bool {
-        matches!(self, Self::Id { is_hole : true })
-    }
-
-    /// Returns whether the token is a valid whitespace character.
-    pub fn is_whitespace(&self) -> bool {
-        matches!(self, Self::Whitespace | Self::Comment)
-    }
-
-    /// Returns whether the token is the end-of-file character.
-    pub fn is_eof(&self) -> bool {
-        matches!(self, Self::EoF)
-    }
-
-    /// Returns whether the token is a valid terminator character.
-    pub fn is_eol(&self) -> bool {
-        matches!(self, Self::LineBreak { .. })
-    }
-
-    /// Returns whether this token can terminate the parsing of a block.
-    pub fn is_block_terminator(&self) -> bool {
-        matches!(self, Self::EoF | Self::End)
-    }
 }

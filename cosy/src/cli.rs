@@ -27,6 +27,6 @@ enum CosycCommand {
 pub fn execute() -> () {
     let cosyc_args = Cosyc::parse();
     return match cosyc_args.command {
-        CosycCommand::Run { package_path } => cmd_run::execute(), 
+        CosycCommand::Run { package_path } => cmd_run::execute(package_path), 
     };
 }
