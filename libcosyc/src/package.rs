@@ -2,7 +2,6 @@ use crate::source::FileID;
 use std::ffi::OsString;
 
 /// Stores information about a package.
-#[derive(Debug)]
 pub struct Package {
     /// A list of source files associated with package.
     pub files : Vec<FileID>,

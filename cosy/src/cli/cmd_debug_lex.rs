@@ -1,6 +1,7 @@
 use std::cmp;
 
-use libcosyc::parse::lex;
+use libcosyc::parse::lex::{ Lexer, Token };
+use libcosyc::error::Diagnostic;
 
 /// Tokenises a file and outputs its lexical info.
 ///
@@ -21,10 +22,13 @@ const MAX_SRC_LENGTH : usize = 64;
 pub(super) fn execute(sess : &mut crate::Session, args : Args) {
     let file_id = match sess.files.load((&args.file_path).into()) {
         Ok(x) => x,
-        Err(_err) => unimplemented!() // TODO :: better errors
+        Err(err) => {
+            Diagnostic::from(err).report(&mut sess.issues);
+            return;
+        },
     };
     let src = sess.files.get_file(file_id).get_src();
-    let mut lexer = lex::Lexer::new(&src);
+    let mut lexer = Lexer::new(&src);
     let mut tokens = vec![];
     let mut max_span = HEAD_SPAN.len();
     let mut max_name = HEAD_NAME.len();
@@ -36,7 +40,7 @@ pub(super) fn execute(sess : &mut crate::Session, args : Args) {
         max_span = cmp::max(max_span, token_span.len());
         max_name = cmp::max(max_name, token_name.len());
         tokens.push((token_span, token_name, token_src));
-        if token.1 == lex::Token::EoF {
+        if token.1 == Token::EoF {
             break;
         }
     }

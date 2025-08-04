@@ -22,7 +22,6 @@ pub struct Location {
 }
 
 /// Information about a source file.
-#[derive(Debug)]
 pub struct File {
     /// The directory this file is located in. `None` if the file is not a
     /// physical file.
@@ -216,8 +215,8 @@ impl FileManager {
     }
 }
 
-/// Represents a span of bytes within a translation unit.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+/// Represents a span of bytes within a file.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Span {
     /// The starting byte of the span (inclusive).
     pub start : usize,

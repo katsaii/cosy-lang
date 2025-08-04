@@ -2,6 +2,7 @@ pub mod source;
 pub mod error;
 pub mod parse;
 pub mod package;
+pub mod reporting;
 
 /// Cosy language file extension.
 pub const EXT_SRC : &'static str = "cy";
@@ -15,7 +16,8 @@ pub const EXT_IDL : &'static str = "cidl";
 /// Common info used throughout many parts of the compiler.
 #[derive(Default)]
 pub struct Session {
-    /// A store of all files managed by a compiler session.
+    /// Stores all files managed by a compiler session.
     pub files : source::FileManager,
-    //pub issues : IssueManager,
+    /// Stores any diagnostic information reported by the compiler tools.
+    pub issues : error::IssueManager,
 }
