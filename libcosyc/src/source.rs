@@ -1,11 +1,12 @@
-#[allow(unused_imports)]
 use std::{
-    env, fs, cmp, fmt, ops,
-    ffi::{ OsStr, OsString },
+    env, io, fs, cmp, fmt, ops, mem,
+    ffi::OsString,
     path::{ Path, PathBuf },
 };
+use path_clean::PathClean;
+use pathdiff::diff_paths;
 
-/// A simple handle to a file within a package.
+/// A simple handle to a file managed by the compiler.
 pub type FileID = usize;
 
 /// The row and column numbers of a source file.
@@ -30,14 +31,25 @@ pub struct File {
     pub name : OsString,
     /// The type of this file.
     pub ext : Option<OsString>,
-    /// The source code of the script.
-    pub src : String,
+    src : String,
     lines : Vec<Span>,
     file_id : FileID,
 }
 
 impl File {
-    fn calculate_lines(&mut self) {
+    fn new(
+        dir : Option<PathBuf>,
+        name : OsString,
+        ext : Option<OsString>,
+        src : String,
+        file_id : FileID,
+    ) -> Self {
+        let mut file = Self { dir, name, ext, src, lines : vec![], file_id };
+        file.refresh_lines();
+        file
+    }
+
+    fn refresh_lines(&mut self) {
         self.lines.clear();
         let mut chars = self.src.char_indices().peekable();
         let mut start = 0;
@@ -59,6 +71,16 @@ impl File {
         }
         self.lines.push(Span::new(start..self.src.len()));
         self.lines.shrink_to_fit();
+    }
+
+    /// Returns the contents of this file.
+    pub fn get_src(&self) -> &str { &self.src }
+
+    /// Updates the contents of this file, returning ownership of the old content.
+    pub fn set_src(&mut self, src : String) -> String {
+        let old_src = mem::replace(&mut self.src, src);
+        self.refresh_lines();
+        old_src
     }
 
     /// Searches the lines vector for a span that encloses a specific location.
@@ -125,39 +147,62 @@ impl fmt::Display for File {
     }
 }
 
-/// Stores information about a package.
-#[derive(Debug)]
-pub struct Package {
-    /// A list of source files associated with package.
-    pub files : Vec<File>,
-    /// The name of this package.
-    pub name : OsString,
+/// Converts an arbitrary path into an absolute path, using the current working
+/// directory as its root if the path is relative.
+///
+/// Will resolve any symlinks.
+///
+/// Returns `None` if the path is unchanged.
+pub fn resolve_absolute_path(path : &Path) -> Option<PathBuf> {
+    if let Some(canon_path) = fs::canonicalize(path).ok() {
+        Some(canon_path)
+    } else if path.is_absolute() {
+        None
+    } else if let Some(cwd) = env::current_dir().ok() {
+        Some(cwd.join(path).clean())
+    } else {
+        None
+    }
 }
 
-impl Package {
-    /// Creates a new package with the given name.
-    pub fn new(name : OsString) -> Self {
-        Self { files : Vec::new(), name }
+/// Converts an absolute path into a path relative to the current working
+/// directory.
+///
+/// Returns `None` if the path is not relative to the working directory.
+pub fn resolve_relative_path(path : &Path) -> Option<PathBuf> {
+    diff_paths(path, env::current_dir().ok()?)
+}
+
+/// Stores information about files managed by the compiler. Avoids having to
+/// pass around lots of `Rc<File>` instances around.
+///
+/// File ids are also a lot smaller and more convenient to clone.
+pub struct FileManager {
+    files : Vec<File>,
+}
+
+impl FileManager {
+    /// Creates an empty file manager.
+    pub fn new() -> Self {
+        Self { files : Vec::new() }
     }
 
-    /// Inserts a new virtual file into this package and returns its handle.
-    pub fn load_str(
-        &mut self,
-        mut path : PathBuf,
-        src : String,
-    ) -> FileID {
+    /// "Opens" a new virtual file and returns its handle.
+    pub fn load_str(&mut self, mut path : PathBuf, src : String) -> FileID {
         let name = path.file_stem().map(OsString::from).unwrap_or("main".into());
         let ext = path.extension().map(OsString::from);
         let dir = if path.pop() { Some(path) } else { None };
         let file_id = self.files.len();
-        let mut file = File {
-            dir, name, ext, src,
-            lines : Vec::new(),
-            file_id,
-        };
-        file.calculate_lines();
+        let file = File::new(dir, name, ext, src, file_id);
         self.files.push(file);
         file_id
+    }
+
+    /// Opens a physical file and returns its handle.
+    pub fn load(&mut self, path : PathBuf) -> io::Result<FileID> {
+        let src = fs::read_to_string(&path)?;
+        let file_id = self.load_str(path, src);
+        Ok(file_id)
     }
 
     /// Helper function for getting file information. Since `FileID`s are
