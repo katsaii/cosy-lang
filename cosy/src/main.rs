@@ -1,11 +1,20 @@
 mod cli;
 
-use libcosyc::Session;
+use libcosyc::{
+    Session,
+    reporting::{ Renderer, log::LogRenderer }
+};
+use std::io;
 
 pub fn main() {
     let mut sess = Session::default();
     cli::execute(&mut sess);
-    if let Some(stats) = sess.issues.error_stats() {
-        println!("{:?}", stats);
+    let mut renderer = LogRenderer;
+    let stderr = &mut io::stderr();
+    if let Err(err) = renderer.render_session(stderr, &sess) {
+        println!(
+            "ENCOUNTERED AN UNEXPECTED ERROR WHEN REPORTING ERRORS:\n{}",
+            err
+        );
     }
 }
