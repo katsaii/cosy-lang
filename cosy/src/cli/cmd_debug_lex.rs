@@ -1,4 +1,4 @@
-use std::{ fs, cmp };
+use std::cmp;
 
 use libcosyc::parse::lex;
 
@@ -16,8 +16,14 @@ const HEAD_SPAN : &str = "span";
 const HEAD_NAME : &str = "name";
 const HEAD_SRC : &str = "src";
 
-pub(super) fn execute(args : Args) {
-    let src = fs::read_to_string(&args.file_path).unwrap(); // TODO :: better errors
+const MAX_SRC_LENGTH : usize = 64;
+
+pub(super) fn execute(sess : &mut crate::Session, args : Args) {
+    let file_id = match sess.files.load((&args.file_path).into()) {
+        Ok(x) => x,
+        Err(_err) => unimplemented!() // TODO :: better errors
+    };
+    let src = sess.files.get_file(file_id).get_src();
     let mut lexer = lex::Lexer::new(&src);
     let mut tokens = vec![];
     let mut max_span = HEAD_SPAN.len();
@@ -44,9 +50,12 @@ pub(super) fn execute(args : Args) {
         "", "", w_span=max_span, w_name=max_name
     );
     for (span, name, src) in tokens {
+        let src_trunc = if src.len() > MAX_SRC_LENGTH {
+            format!("({} bytes)", src.len())
+        } else { src };
         println!(
             "{:<w_span$} | {:<w_name$} | {}",
-            span, name, src, w_span=max_span, w_name=max_name
+            span, name, src_trunc, w_span=max_span, w_name=max_name
         );
     }
 }

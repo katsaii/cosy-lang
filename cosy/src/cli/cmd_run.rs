@@ -8,6 +8,6 @@ pub(super) struct Args {
     package_path : Option<String>,
 }
 
-pub(super) fn execute(_args : Args) {
+pub(super) fn execute(_sess : &mut crate::Session, _args : Args) {
     println!("Hello, world!");
 }

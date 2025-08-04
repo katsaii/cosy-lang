@@ -177,16 +177,12 @@ pub fn resolve_relative_path(path : &Path) -> Option<PathBuf> {
 /// pass around lots of `Rc<File>` instances around.
 ///
 /// File ids are also a lot smaller and more convenient to clone.
+#[derive(Default)]
 pub struct FileManager {
     files : Vec<File>,
 }
 
 impl FileManager {
-    /// Creates an empty file manager.
-    pub fn new() -> Self {
-        Self { files : Vec::new() }
-    }
-
     /// "Opens" a new virtual file and returns its handle.
     pub fn load_str(&mut self, mut path : PathBuf, src : String) -> FileID {
         let name = path.file_stem().map(OsString::from).unwrap_or("main".into());

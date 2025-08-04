@@ -1,5 +1,8 @@
 mod cli;
 
+use libcosyc::Session;
+
 pub fn main() {
-    cli::execute();
+    let mut sess = Session::default();
+    cli::execute(&mut sess);
 }

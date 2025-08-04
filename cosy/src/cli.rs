@@ -26,13 +26,12 @@ enum CosycCommandDebug {
     Lex(cmd_debug_lex::Args),
 }
 
-#[allow(dead_code)]
-pub(super) fn execute() -> () {
+pub(super) fn execute(sess : &mut crate::Session) -> () {
     let cosyc_args = Cosyc::parse();
     return match cosyc_args.command {
-        CosycCommand::Run(args) => cmd_run::execute(args),
+        CosycCommand::Run(args) => cmd_run::execute(sess, args),
         CosycCommand::Debug(debug_cmd) => match debug_cmd {
-            CosycCommandDebug::Lex(args) => cmd_debug_lex::execute(args),
+            CosycCommandDebug::Lex(args) => cmd_debug_lex::execute(sess, args),
         },
     };
 }
