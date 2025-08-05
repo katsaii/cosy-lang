@@ -1,5 +1,8 @@
 use std::{ fmt, io };
-use crate::source::{ Location, FileManager };
+use crate::{
+    reporting::Colour,
+    source::{ Location, FileManager }
+};
 
 /// Represents a complete message for an error.
 pub struct Message {
@@ -204,6 +207,16 @@ impl Severity {
             Self::Warning => "warning",
             Self::Fatal => "error",
             Self::Bug => "bug",
+        }
+    }
+
+    /// Returns the colour of this severity.
+    pub fn as_colour(&self) -> Colour {
+        match self {
+            Self::Info => Colour::BrightBlue,
+            Self::Warning => Colour::Yellow,
+            Self::Fatal => Colour::BrightRed,
+            Self::Bug => Colour::Magenta,
         }
     }
 }

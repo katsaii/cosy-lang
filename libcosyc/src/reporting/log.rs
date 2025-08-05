@@ -1,6 +1,6 @@
 use crate::{
     source::FileManager, error::Diagnostic,
-    reporting::{ Renderer, PrettyPrinter },
+    reporting::{ Renderer, PrettyPrinter, Colour, Style },
 };
 use std::io;
 
@@ -12,8 +12,13 @@ use std::io;
 ///
 /// Uses coloured text if the output stream supports it. Otherwise, the
 /// output will just be monochrome.
-#[derive(Default)]
 pub struct LogRenderer(PrettyPrinter);
+
+impl LogRenderer {
+    pub fn new(use_colour : bool) -> Self {
+        Self(PrettyPrinter::new(use_colour))
+    }
+}
 
 impl Renderer for LogRenderer {
     fn render_diagnostic<W : io::Write>(
@@ -22,7 +27,10 @@ impl Renderer for LogRenderer {
         error : &Diagnostic,
         files : &FileManager,
     ) -> io::Result<()> {
+        self.0.write_style_fg(out, error.severity.as_colour())?;
+        self.0.write_style(out, Style::Bold)?;
         self.0.write(out, error.severity.as_str())?;
+        self.0.clear_style(out)?;
         self.0.write(out, ": ")?;
         // render messages
         if !error.messages.is_empty() {
@@ -33,7 +41,9 @@ impl Renderer for LogRenderer {
                     self.0.writeln(out)?;
                 }
                 first = false;
+                self.0.write_style_fg(out, Colour::BrightCyan)?;
                 self.0.write(out, "* ")?;
+                self.0.clear_style(out)?;
                 self.0.indent_stash();
                 self.0.write(out, &message.show(files))?;
                 self.0.indent_pop();

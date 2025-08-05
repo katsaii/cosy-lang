@@ -51,9 +51,14 @@ pub struct PrettyPrinter {
     indent : usize,
     indent_stack : Vec<usize>,
     do_indent : bool,
+    use_colour : bool,
 }
 
 impl PrettyPrinter {
+    pub fn new(use_colour : bool) -> Self {
+        Self { use_colour, ..Default::default() }
+    }
+
     /// Writes a string to the output stream, sanitising any escape codes.
     pub fn write<W : io::Write>(
         &mut self,
@@ -80,6 +85,47 @@ impl PrettyPrinter {
             chr_prev = chr;
         }
         Ok(())
+    }
+
+    /// Sets the foreground colour of the text that follows. Should have no
+    /// effect on unsupported terminals.
+    pub fn write_style_fg<W : io::Write>(
+        &mut self,
+        out : &mut W,
+        fg : Colour,
+    ) -> io::Result<()> { self.write_ansi(out, fg as usize) }
+
+    /// Sets the background colour of the text that follows. Should have no
+    /// effect on unsupported terminals.
+    pub fn write_style_bg<W : io::Write>(
+        &mut self,
+        out : &mut W,
+        bg : Colour,
+    ) -> io::Result<()> { self.write_ansi(out, bg as usize) }
+
+    /// Sets the style the text that follows. Should have no effect on
+    /// unsupported terminals.
+    pub fn write_style<W : io::Write>(
+        &mut self,
+        out : &mut W,
+        style : Style,
+    ) -> io::Result<()> { self.write_ansi(out, style as usize) }
+
+    /// Clears the current ANSI terminal style.
+    pub fn clear_style<W : io::Write>(
+        &mut self,
+        out : &mut W,
+    ) -> io::Result<()> { self.write_ansi(out, 0) }
+
+    fn write_ansi<W : io::Write>(
+        &mut self,
+        out : &mut W,
+        val : usize,
+    ) -> io::Result<()> {
+        if !self.use_colour {
+            return Ok(());
+        }
+        write!(out, "\x1B[{}m", val)
     }
 
     /// Writes a new line to the output stream, indenting the cursor by `indent`.
@@ -145,6 +191,41 @@ impl Default for PrettyPrinter {
             indent : 0,
             indent_stack : Vec::new(),
             do_indent : true,
+            use_colour : false,
         }
     }
+}
+
+/// ANSI Terminal colours.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Colour {
+    Black = 30,
+    Red = 31,
+    Green = 32,
+    Yellow = 33,
+    Blue = 34,
+    Magenta = 35,
+    Cyan = 36,
+    Grey = 37,
+    BrightBlack = 90,
+    BrightRed = 91,
+    BrightGreen = 92,
+    BrightYellow = 93,
+    BrightBlue = 94,
+    BrightMagenta = 95,
+    BrightCyan = 96,
+    BrightGrey = 97,
+}
+
+/// ANSI Terminal styles.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Style {
+    Bold = 1,
+    Dimmed = 2,
+    Italic = 3,
+    Underline = 4,
+    Blink = 5,
+    Reversed = 7,
+    Hidden = 8,
+    Strikethrough = 9
 }

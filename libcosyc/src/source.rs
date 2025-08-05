@@ -12,7 +12,7 @@ pub type FileID = usize;
 pub type LineAndColumn = (usize, usize);
 
 /// Represents a span of bytes within a source file.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Location {
     /// The span information.
     pub span : Span,
@@ -204,7 +204,7 @@ impl FileManager {
 }
 
 /// Represents a span of bytes within a file.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Span {
     /// The starting byte of the span (inclusive).
     pub start : usize,
