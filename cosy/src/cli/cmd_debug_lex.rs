@@ -27,7 +27,8 @@ pub(super) fn execute(sess : &mut crate::Session, args : Args) {
             return;
         },
     };
-    let src = sess.files.get_file(file_id).get_src();
+    let file = sess.files.get_file(file_id);
+    let src = file.get_src();
     let mut lexer = Lexer::new(&src);
     let mut tokens = vec![];
     let mut max_span = HEAD_SPAN.len();

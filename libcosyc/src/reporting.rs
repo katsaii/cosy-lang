@@ -1,7 +1,8 @@
 pub mod log;
 
 use crate::{
-    Session, source::FileManager,
+    Session,
+    source::FileManager,
     error::{ Diagnostic, IssueStats },
 };
 use std::io;
@@ -49,16 +50,47 @@ pub struct PrettyPrinter {
     column : usize,
     indent : usize,
     indent_stack : Vec<usize>,
+    do_indent : bool,
 }
 
 impl PrettyPrinter {
-    /// Writes a string to 
+    /// Writes a string to the output stream, sanitising any escape codes.
     pub fn write<W : io::Write>(
         &mut self,
         out : &mut W,
-        text : &str
+        text : &str,
     ) -> io::Result<()> {
-        unimplemented!()
+        self.ensure_indented(out)?;
+        let mut chr_prev = '\0';
+        for chr in text.chars() {
+            if chr == '\n' && chr_prev == '\r' {
+                // skip this line break
+            } else if chr == '\n' || chr == '\r' {
+                self.writeln(out)?;
+            } else if chr.is_whitespace() {
+                write!(out, " ")?;
+                self.column += 1;
+            } else {
+                self.ensure_indented(out)?;
+                for chr_escaped in chr.escape_debug() {
+                    write!(out, "{}", chr_escaped)?;
+                    self.column += 1;
+                }
+            }
+            chr_prev = chr;
+        }
+        Ok(())
+    }
+
+    /// Writes a new line to the output stream, indenting the cursor by `indent`.
+    pub fn writeln<W : io::Write>(
+        &mut self,
+        out : &mut W,
+    ) -> io::Result<()> {
+        writeln!(out)?;
+        self.column = 0;
+        self.do_indent = true;
+        Ok(())
     }
 
     /// Skips the next `n` characters in the output stream.
@@ -67,8 +99,21 @@ impl PrettyPrinter {
         out : &mut W,
         n : usize
     ) -> io::Result<()> {
+        self.ensure_indented(out)?;
         write!(out, "{}", " ".repeat(n))?;
         self.column += n;
+        Ok(())
+    }
+
+    fn ensure_indented<W : io::Write>(
+        &mut self,
+        out : &mut W,
+    ) -> io::Result<()> {
+        if self.do_indent {
+            write!(out, "{}", " ".repeat(self.indent))?;
+            self.column += self.indent;
+            self.do_indent = false;
+        }
         Ok(())
     }
 
@@ -93,45 +138,13 @@ impl PrettyPrinter {
     }
 }
 
-fn _fmt(template : &str, args : &[&str]) -> String {
-    fn get_arg<'a>(args : &'a [&'a str], pos : usize) -> &'a str {
-        args.get(pos).map(|x| x as &str).unwrap_or_default()
-    }
-    fn write_arg(sb : &mut String, s : &str) {
-        sb.push_str(s);
-    }
-    let mut sb = String::new();
-    let mut arg_pos = 0;
-    let mut prev = '\0';
-    let mut skip_close_paren = false;
-    for next in template.chars() {
-        match (prev, next) {
-            (x@'{', '{') | (x@'}', '}') => sb.push(x),
-            ('{', '}') => {
-                sb.pop(); // pop the `{` character
-                let arg = get_arg(args, arg_pos);
-                write_arg(&mut sb, arg);
-                arg_pos += 1;
-            },
-            ('{', '*') => {
-                sb.pop(); // pop the `{` character
-                for i in arg_pos..args.len() {
-                    if i > arg_pos {
-                        sb.push_str(", ");
-                    }
-                    let arg = get_arg(args, i);
-                    write_arg(&mut sb, arg);
-                }
-                skip_close_paren = true;
-            },
-            (_, x) => {
-                if !skip_close_paren || x != '}' {
-                    skip_close_paren = false;
-                    sb.push(x)
-                }
-            },
+impl Default for PrettyPrinter {
+    fn default() -> Self {
+        Self {
+            column : 0,
+            indent : 0,
+            indent_stack : Vec::new(),
+            do_indent : true,
         }
-        prev = next;
     }
-    sb
 }

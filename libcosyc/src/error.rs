@@ -1,5 +1,5 @@
 use std::{ fmt, io };
-use crate::source::Location;
+use crate::source::{ Location, FileManager };
 
 /// Represents a complete message for an error.
 pub struct Message {
@@ -22,6 +22,58 @@ impl Message {
         self.args.push(arg);
         self
     }
+
+    /// Returns the contents of this message as a string.
+    pub fn show(&self, files : &FileManager) -> String {
+        let mut args = Vec::new();
+        for arg in &self.args {
+            args.push(arg.show(files));
+        }
+        runtime_fmt(self.fmt, &args)
+    }
+}
+
+fn runtime_fmt(template : &str, args : &[&str]) -> String {
+    fn get_arg<'a>(args : &'a [&'a str], pos : usize) -> &'a str {
+        args.get(pos).map(|x| x as &str).unwrap_or_default()
+    }
+    fn write_arg(sb : &mut String, s : &str) {
+        sb.push_str(s);
+    }
+    let mut sb = String::new();
+    let mut arg_pos = 0;
+    let mut prev = '\0';
+    let mut skip_close_paren = false;
+    for next in template.chars() {
+        match (prev, next) {
+            (x@'{', '{') | (x@'}', '}') => sb.push(x),
+            ('{', '}') => {
+                sb.pop(); // pop the `{` character
+                let arg = get_arg(args, arg_pos);
+                write_arg(&mut sb, arg);
+                arg_pos += 1;
+            },
+            ('{', '*') => {
+                sb.pop(); // pop the `{` character
+                for i in arg_pos..args.len() {
+                    if i > arg_pos {
+                        sb.push_str(", ");
+                    }
+                    let arg = get_arg(args, i);
+                    write_arg(&mut sb, arg);
+                }
+                skip_close_paren = true;
+            },
+            (_, x) => {
+                if !skip_close_paren || x != '}' {
+                    skip_close_paren = false;
+                    sb.push(x)
+                }
+            },
+        }
+        prev = next;
+    }
+    sb
 }
 
 impl From<&'static str> for Message {
@@ -44,6 +96,20 @@ pub enum TextFragment {
     Locale(&'static str),
     Text(String),
     Code(Location),
+}
+
+impl TextFragment {
+    /// Returns the contents of this text fragment as a string.
+    pub fn show<'a>(&'a self, files : &'a FileManager) -> &'a str {
+        match self {
+            Self::Locale(x) => x,
+            Self::Text(x) => &x,
+            Self::Code(location) => {
+                let file = files.get_file(location.file_id);
+                location.span.slice(file.get_src())
+            }
+        }
+    }
 }
 
 impl From<&'static str> for TextFragment {
@@ -122,7 +188,7 @@ impl<M : Into<Message>> From<M> for Note {
 }
 
 /// Affects the highlighting colour of the error in the output window.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Severity {
     Info,
     Warning,
@@ -130,15 +196,21 @@ pub enum Severity {
     Bug,
 }
 
-impl fmt::Display for Severity {
-    fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
-        let kind = match self {
+impl Severity {
+    /// Returns the string representation of this severity.
+    pub fn as_str(&self) -> &'static str {
+        match self {
             Self::Info => "info",
             Self::Warning => "warning",
             Self::Fatal => "error",
             Self::Bug => "bug",
-        };
-        write!(out, "{}", kind)
+        }
+    }
+}
+
+impl fmt::Display for Severity {
+    fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
+        write!(out, "{}", self.as_str())
     }
 }
 

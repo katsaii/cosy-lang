@@ -1,6 +1,5 @@
 use std::{
     env, io, fs, cmp, fmt, ops, mem,
-    ffi::OsString,
     path::{ Path, PathBuf },
 };
 use path_clean::PathClean;
@@ -21,15 +20,24 @@ pub struct Location {
     pub file_id : FileID,
 }
 
+impl Location {
+    /// Returns the filename a source location points to in the format
+    /// `dirname/filename.ext:line:column`.
+    pub fn show_path(&self, files : &FileManager) -> String {
+        let file = files.get_file(self.file_id);
+        let file_display = file.path.display();
+        if let Some((line, column)) = file.find_location(self.span.start) {
+            format!("{}:{}:{}", file_display, line, column)
+        } else {
+            format!("{}", file_display)
+        }
+    }
+}
+
 /// Information about a source file.
 pub struct File {
-    /// The directory this file is located in. `None` if the file is not a
-    /// physical file.
-    pub dir : Option<PathBuf>,
-    /// The name of this file, excluding the ext.
-    pub name : OsString,
-    /// The type of this file.
-    pub ext : Option<OsString>,
+    /// The path of this file, including the directory, file name, and extension.
+    pub path : PathBuf,
     src : String,
     lines : Vec<Span>,
     file_id : FileID,
@@ -37,13 +45,11 @@ pub struct File {
 
 impl File {
     fn new(
-        dir : Option<PathBuf>,
-        name : OsString,
-        ext : Option<OsString>,
+        path : PathBuf,
         src : String,
         file_id : FileID,
     ) -> Self {
-        let mut file = Self { dir, name, ext, src, lines : vec![], file_id };
+        let mut file = Self { path, src, lines : vec![], file_id };
         file.refresh_lines();
         file
     }
@@ -99,13 +105,6 @@ impl File {
         self.lines.get(line - 1)
     }
 
-    /// Attempts to convert row and column numbers into a byte index in the
-    /// source file.
-    pub fn find_index(&self, location : LineAndColumn) -> Option<usize> {
-        let line_span = self.find_span(location.0)?;
-        Some(line_span.start + location.1 - 1)
-    }
-
     /// Attempts to convert a byte position to a row and column number.
     pub fn find_location(&self, pos : usize) -> Option<LineAndColumn> {
         let line = self.find_line(pos)?;
@@ -130,19 +129,6 @@ impl File {
             span : span.clone(),
             file_id : self.file_id,
         }
-    }
-}
-
-impl fmt::Display for File {
-    fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
-        let mut pathbuf = if let Some(path) = &self.dir {
-            path.to_path_buf()
-        } else {
-            PathBuf::new()
-        };
-        pathbuf.push(&self.name);
-        self.ext.as_ref().map(|x| pathbuf.set_extension(x));
-        write!(out, "{}", pathbuf.display())
     }
 }
 
@@ -183,18 +169,20 @@ pub struct FileManager {
 
 impl FileManager {
     /// "Opens" a new virtual file and returns its handle.
-    pub fn load_str(&mut self, mut path : PathBuf, src : String) -> FileID {
-        let name = path.file_stem().map(OsString::from).unwrap_or("main".into());
-        let ext = path.extension().map(OsString::from);
-        let dir = if path.pop() { Some(path) } else { None };
+    pub fn load_str(&mut self, path : PathBuf, src : String) -> FileID {
+        //let name = path.file_stem().map(OsString::from).unwrap_or("main".into());
+        //let ext = path.extension().map(OsString::from);
+        //let dir = if path.pop() { Some(path) } else { None };
         let file_id = self.files.len();
-        let file = File::new(dir, name, ext, src, file_id);
+        let file = File::new(path, src, file_id);
         self.files.push(file);
         file_id
     }
 
     /// Opens a physical file and returns its handle.
     pub fn load(&mut self, path : PathBuf) -> io::Result<FileID> {
+        let path = resolve_absolute_path(&path).unwrap_or(path);
+        let path = resolve_relative_path(&path).unwrap_or(path);
         let src = fs::read_to_string(&path)?;
         let file_id = self.load_str(path, src);
         Ok(file_id)
