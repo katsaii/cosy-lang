@@ -222,6 +222,10 @@ impl Severity {
     }
 }
 
+impl Default for Severity {
+    fn default() -> Self { Self::Fatal }
+}
+
 impl fmt::Display for Severity {
     fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
         write!(out, "{}", self.as_str())
@@ -229,6 +233,7 @@ impl fmt::Display for Severity {
 }
 
 /// Represents all information about an error encountered by Cate.
+#[derive(Default)]
 pub struct Diagnostic {
     /// The severity of this error.
     pub severity : Severity,
@@ -250,13 +255,13 @@ impl Diagnostic {
     /// Creates an empty diagnostic struct with this severity. Builder pattern
     /// is used to insert information into the error message.
     pub fn new(severity : Severity) -> Self {
-        Self {
-            severity,
-            messages : Vec::new(),
-            primary_labels : Vec::new(),
-            secondary_labels : Vec::new(),
-            notes : Vec::new(),
+        let mut diag = Self { severity, ..Default::default() };
+        if severity == Severity::Bug {
+            diag = diag.note("\
+                likely caused by a bug in the compiler, please report the issue:\n\
+                https://github.com/katsaii/cosy-lang/issues");
         }
+        diag
     }
 
     /// Creates an empty info message.
@@ -277,9 +282,6 @@ impl Diagnostic {
     /// Creates an empty bug message.
     pub fn bug() -> Self {
         Self::new(Severity::Bug)
-            .note("\
-                likely caused by a bug in the compiler, please report the issue:\n\
-                https://github.com/katsaii/cosy-lang/issues")
     }
 
     /// Creates an bug message with a note indicating that a feature is
