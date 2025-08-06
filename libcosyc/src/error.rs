@@ -278,9 +278,8 @@ impl Diagnostic {
     pub fn bug() -> Self {
         Self::new(Severity::Bug)
             .note("\
-                likely caused by a bug in the compiler\n\
-                please report the issue:\n\
-                  https://github.com/katsaii/cosy-lang/issues")
+                likely caused by a bug in the compiler, please report the issue:\n\
+                https://github.com/katsaii/cosy-lang/issues")
     }
 
     /// Creates an bug message with a note indicating that a feature is

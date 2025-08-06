@@ -45,11 +45,17 @@ pub(super) fn execute(sess : &mut Session, args : Args) {
     }
     let span_end = lexer.peek_span();
     let span_full = span_start.join(span_end);
-    Diagnostic::new(Severity::Info)
+    Diagnostic::info()
         .message("full span")
         .label((file.make_location(&span_full), [
                 ("span: {}", [format!("{}", span_full).into()]).into(),
                 "multiple captions are split over multiple lines nicely".into(),
+            ]))
+        .label_other((file.make_location(&span_start), [
+                "starts here".into(),
+            ]))
+        .label_other((file.make_location(&span_end), [
+                "ends here".into(),
             ]))
         .report(&mut sess.issues);
 }

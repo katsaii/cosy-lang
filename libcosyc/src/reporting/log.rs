@@ -44,7 +44,6 @@ impl Renderer for LogRenderer {
         if !diag.primary_labels.is_empty() {
             self.0.write_style_fg(out, Colour::BrightCyan)?;
             self.0.write(out, ">>> ")?;
-            self.0.clear_style(out)?;
             // render filename
             let mut first = true;
             for label in &diag.primary_labels {
@@ -54,6 +53,7 @@ impl Renderer for LogRenderer {
                 first = false;
                 self.0.write(out, &label.location.show_path(files))?;
             }
+            self.0.clear_style(out)?;
         }
         self.0.writeln(out)?;
         Ok(())
