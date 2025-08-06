@@ -255,13 +255,13 @@ impl Diagnostic {
     /// Creates an empty diagnostic struct with this severity. Builder pattern
     /// is used to insert information into the error message.
     pub fn new(severity : Severity) -> Self {
-        let mut diag = Self { severity, ..Default::default() };
-        if severity == Severity::Bug {
-            diag = diag.note("\
+        let diag = Self { severity, ..Default::default() };
+        match severity {
+            Severity::Bug => diag.note("\
                 likely caused by a bug in the compiler, please report the issue:\n\
-                https://github.com/katsaii/cosy-lang/issues");
+                https://github.com/katsaii/cosy-lang/issues"),
+            _ => diag,
         }
-        diag
     }
 
     /// Creates an empty info message.
