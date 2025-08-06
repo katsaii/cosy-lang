@@ -1,7 +1,6 @@
 use std::cmp;
-
 use libcosyc::parse::lex::{ Lexer, Token };
-use libcosyc::error::Diagnostic;
+use libcosyc::Session;
 
 /// Tokenises a file and outputs its lexical info.
 ///
@@ -19,11 +18,11 @@ const HEAD_SRC : &str = "src";
 
 const MAX_SRC_LENGTH : usize = 64;
 
-pub(super) fn execute(sess : &mut crate::Session, args : Args) {
+pub(super) fn execute(sess : &mut Session, args : Args) {
     let file_id = match sess.files.load((&args.file_path).into()) {
         Ok(x) => x,
         Err(err) => {
-            Diagnostic::from(err).report(&mut sess.issues);
+            err.report(&mut sess.issues);
             return;
         },
     };

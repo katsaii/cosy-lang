@@ -1,11 +1,9 @@
 pub mod log;
+pub mod cli;
 
-use crate::{
-    Session,
-    source::FileManager,
-    error::{ Diagnostic, IssueStats },
-};
 use std::io;
+use crate::{ Session, source::FileManager };
+use crate::error::{ Diagnostic, IssueStats };
 
 /// Any valid diagnostics renderer must satisfy this trait.
 pub trait Renderer {
@@ -18,8 +16,8 @@ pub trait Renderer {
     ) -> io::Result<()> {
         let issues = &sess.issues;
         let files = &sess.files;
-        for error in &issues.errors {
-            self.render_diagnostic(out, error, files)?;
+        for diag in &issues.errors {
+            self.render_diagnostic(out, diag, files)?;
         }
         if let Some(stats) = issues.error_stats() {
             self.render_stats(out, &stats)?;
@@ -31,7 +29,7 @@ pub trait Renderer {
     fn render_diagnostic<W : io::Write>(
         &mut self,
         out : &mut W,
-        error : &Diagnostic,
+        diag : &Diagnostic,
         files : &FileManager,
     ) -> io::Result<()>;
 
@@ -70,8 +68,11 @@ impl PrettyPrinter {
         for chr in text.chars() {
             if chr == '\n' && chr_prev == '\r' {
                 // skip this line break
-            } else if chr == '\n' || chr == '\r' {
+            } else if matches!(chr, '\n' | '\r') {
                 self.writeln(out)?;
+            } else if matches!(chr, '\'' | '"' | '\\') {
+                write!(out, "{}", chr)?;
+                self.column += 1;
             } else if chr.is_whitespace() {
                 write!(out, " ")?;
                 self.column += 1;
@@ -144,9 +145,20 @@ impl PrettyPrinter {
         &mut self,
         out : &mut W,
         n : usize
+    ) -> io::Result<()> { self.repeat(out, n, ' ') }
+
+    /// Writes a character `n`-many times to the output stream.
+    pub fn repeat<W : io::Write>(
+        &mut self,
+        out : &mut W,
+        n : usize,
+        chr : char,
     ) -> io::Result<()> {
+        assert!(!matches!(chr, '\n' | '\r'), "cannot repeat newline chars");
         self.ensure_indented(out)?;
-        write!(out, "{}", " ".repeat(n))?;
+        for _ in 0..n {
+            write!(out, "{}", chr)?;
+        }
         self.column += n;
         Ok(())
     }

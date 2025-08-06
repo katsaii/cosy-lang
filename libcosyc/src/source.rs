@@ -1,9 +1,8 @@
-use std::{
-    env, io, fs, cmp, fmt, ops, mem,
-    path::{ Path, PathBuf },
-};
+use std::{ env, fs, cmp, fmt, ops, mem };
+use std::path::{ Path, PathBuf };
 use path_clean::PathClean;
 use pathdiff::diff_paths;
+use crate::error;
 
 /// A simple handle to a file managed by the compiler.
 pub type FileID = usize;
@@ -26,11 +25,8 @@ impl Location {
     pub fn show_path(&self, files : &FileManager) -> String {
         let file = files.get_file(self.file_id);
         let file_display = file.path.display();
-        if let Some((line, column)) = file.find_location(self.span.start) {
-            format!("{}:{}:{}", file_display, line, column)
-        } else {
-            format!("{}", file_display)
-        }
+        let (line, column) = file.find_location(self.span.start);
+        format!("{}:{}:{}", file_display, line, column)
     }
 }
 
@@ -89,27 +85,29 @@ impl File {
     }
 
     /// Searches the lines vector for a span that encloses a specific location.
-    /// Returns `None` if no lines fit.
-    pub fn find_line(&self, pos : usize) -> Option<usize> {
+    pub fn find_line(&self, pos : usize) -> usize {
         use cmp::Ordering as ord;
         let comparator = |x : &Span| match x {
             x if x.start > pos => ord::Greater,
             x if x.end < pos => ord::Less,
             _ => ord::Equal,
         };
-        self.lines.binary_search_by(comparator).ok().map(|x| x + 1)
+        match self.lines.binary_search_by(comparator) {
+            Ok(x) => x + 1,
+            Err(x) => if x < 1 { 1 } else { x }
+        }
     }
 
     /// Attempts to convert a row number into a file span for this line.
-    pub fn find_span(&self, line : usize) -> Option<&Span> {
+    pub fn find_line_span(&self, line : usize) -> Option<&Span> {
         self.lines.get(line - 1)
     }
 
     /// Attempts to convert a byte position to a row and column number.
-    pub fn find_location(&self, pos : usize) -> Option<LineAndColumn> {
-        let line = self.find_line(pos)?;
+    pub fn find_location(&self, pos : usize) -> LineAndColumn {
+        let line = self.find_line(pos);
         let line_span = &self.lines[line - 1];
-        Some((line, pos - line_span.start + 1))
+        (line, pos - line_span.start + 1)
     }
 
     /// Similar to `find_location`, except returns the start and end lines of a
@@ -117,10 +115,17 @@ impl File {
     pub fn find_location_span(
         &self,
         span : &Span,
-    ) -> Option<(LineAndColumn, LineAndColumn)> {
-        let start = self.find_location(span.start)?;
-        let end = self.find_location(span.end)?;
-        Some((start, end))
+    ) -> (LineAndColumn, LineAndColumn) {
+        let start = self.find_location(span.start);
+        let mut end = self.find_location(span.end);
+        if end.0 > start.0 && end.1 == 1 {
+            // try correct spans that end in the newline character
+            if let Some(prev_line) = self.find_line_span(end.0 - 1) {
+                end.0 -= 1;
+                end.1 = prev_line.len() + 1;
+            }
+        }
+        (start, end)
     }
 
     /// Creates a new location from a given span, in the current source file.
@@ -180,10 +185,20 @@ impl FileManager {
     }
 
     /// Opens a physical file and returns its handle.
-    pub fn load(&mut self, path : PathBuf) -> io::Result<FileID> {
+    pub fn load(&mut self, path : PathBuf) -> error::Result<FileID> {
         let path = resolve_absolute_path(&path).unwrap_or(path);
         let path = resolve_relative_path(&path).unwrap_or(path);
-        let src = fs::read_to_string(&path)?;
+        let src = match fs::read_to_string(&path) {
+            Ok(x) => x,
+            Err(err) => {
+                let diag = error::Diagnostic::error()
+                    .message(("failed to load file `{}`: {}", [
+                        path.display().to_string().into(),
+                        err.into(),
+                    ]));
+                return Err(diag)
+            }
+        };
         let file_id = self.load_str(path, src);
         Ok(file_id)
     }

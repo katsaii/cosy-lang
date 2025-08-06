@@ -1,8 +1,9 @@
-use std::{ fmt, io };
-use crate::{
-    reporting::Colour,
-    source::{ Location, FileManager }
-};
+use std::{ fmt, result };
+use crate::reporting::Colour;
+use crate::source::{ Location, FileManager };
+
+/// A result type for unwinding diagnostic info.
+pub type Result<T> = result::Result<T, Diagnostic>;
 
 /// Represents a complete message for an error.
 pub struct Message {
@@ -96,7 +97,6 @@ impl<I : IntoIterator<Item=TextFragment>> From<(&'static str, I)> for Message {
 /// Represents a string or piece of source code which can be 
 #[derive(PartialEq, Eq)]
 pub enum TextFragment {
-    Locale(&'static str),
     Text(String),
     Code(Location),
 }
@@ -105,7 +105,6 @@ impl TextFragment {
     /// Returns the contents of this text fragment as a string.
     pub fn show<'a>(&'a self, files : &'a FileManager) -> &'a str {
         match self {
-            Self::Locale(x) => x,
             Self::Text(x) => &x,
             Self::Code(location) => {
                 let file = files.get_file(location.file_id);
@@ -115,21 +114,15 @@ impl TextFragment {
     }
 }
 
-impl From<&'static str> for TextFragment {
-    fn from(locale_str : &'static str) -> Self {
-        TextFragment::Locale(locale_str)
-    }
-}
-
-impl From<String> for TextFragment {
-    fn from(string : String) -> Self {
-        Self::Text(string)
-    }
-}
-
 impl From<Location> for TextFragment {
     fn from(location : Location) -> Self {
         TextFragment::Code(location)
+    }
+}
+
+impl<S : ToString> From<S> for TextFragment {
+    fn from(s : S) -> Self {
+        TextFragment::Text(s.to_string())
     }
 }
 
@@ -139,12 +132,6 @@ pub struct Label {
     pub location : Location,
     /// The captions to use (if any) when displaying the error information.
     pub captions : Vec<Message>,
-}
-
-impl From<Location> for Label {
-    fn from(location : Location) -> Self {
-        Label::new(location)
-    }
 }
 
 impl Label {
@@ -159,6 +146,20 @@ impl Label {
         let caption = caption.into();
         self.captions.push(caption);
         self
+    }
+}
+
+impl From<Location> for Label {
+    fn from(location : Location) -> Self {
+        Label::new(location)
+    }
+}
+
+impl<I : IntoIterator<Item=Message>> From<(Location, I)> for Label {
+    fn from((location, captions) : (Location, I)) -> Self {
+        let mut label = Label::new(location);
+        label.captions.extend(captions);
+        label
     }
 }
 
@@ -258,6 +259,11 @@ impl Diagnostic {
         }
     }
 
+    /// Creates an empty info message.
+    pub fn info() -> Self {
+        Self::new(Severity::Info)
+    }
+
     /// Creates an empty warning message.
     pub fn warning() -> Self {
         Self::new(Severity::Warning)
@@ -327,13 +333,6 @@ impl Diagnostic {
     }
 }
 
-impl From<io::Error> for Diagnostic {
-    fn from(err : io::Error) -> Self {
-        Diagnostic::error()
-            .message(("{}", [err.to_string().into()]))
-    }
-}
-
 /// Maintains a list of errors that occurred during compilation.
 #[derive(Default)]
 pub struct IssueManager {
@@ -342,17 +341,27 @@ pub struct IssueManager {
 }
 
 impl IssueManager {
+    /// Returns whether any messages occurred, regardless of their error status.
+    pub fn has_messages(&self) -> bool {
+        !self.errors.is_empty()
+    }
+
     /// Returns whether errors occurred.
     pub fn has_errors(&self) -> bool {
-        !self.errors.is_empty()
+        for error in &self.errors {
+            if matches!(error.severity, Severity::Fatal | Severity::Bug) {
+                return true;
+            }
+        }
+        false
     }
 
     /// Returns the statistics for the number of errors that occurred.
     pub fn error_stats(&self) -> Option<IssueStats> {
-        if !self.has_errors() {
+        if !self.has_messages() {
             return None;
         }
-        let mut max_severity = Severity::Warning;
+        let mut max_severity = Severity::Info;
         let mut counts = [0, 0, 0, 0];
         for error in &self.errors {
             let severity = &error.severity;
@@ -394,6 +403,6 @@ pub struct IssueStats {
 impl IssueStats {
     /// Returns the total number of messages that occurred.
     pub fn total(&self) -> usize {
-        self.warnings + self.errors + self.bugs
+        self.infos + self.warnings + self.errors + self.bugs
     }
 }

@@ -1,8 +1,9 @@
 pub mod token;
 
 pub use token::Token;
-use crate::source::Span;
+
 use std::{ mem, str::CharIndices };
+use crate::source::Span;
 
 /// Pairs a token with its byte span in the source code.
 pub type TokenSpan = (Span, Token);
@@ -28,8 +29,11 @@ impl<'a> Lexer<'a> {
         mem::replace(&mut self.peeked, peeked_new)
     }
 
-    /// Returns the type token currently peeked.
+    /// Returns the type of the currently peeked token.
     pub fn peek(&self) -> &Token { &self.peeked.1 }
+
+    /// Returns the span of the currently peeked token.
+    pub fn peek_span(&self) -> &Span { &self.peeked.0 }
 }
 
 struct Cursor<'a> {

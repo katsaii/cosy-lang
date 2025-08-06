@@ -1,3 +1,5 @@
+use libcosyc::Session;
+
 /// Builds the package and immediately runs its entrypoint.
 #[derive(super::Args)]
 pub(super) struct Args {
@@ -8,6 +10,6 @@ pub(super) struct Args {
     package_path : Option<String>,
 }
 
-pub(super) fn execute(_sess : &mut crate::Session, _args : Args) {
+pub(super) fn execute(_sess : &mut Session, _args : Args) {
     println!("Hello, world!");
 }

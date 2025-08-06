@@ -1,5 +1,5 @@
-use crate::source::FileID;
 use std::ffi::OsString;
+use crate::source::FileID;
 
 /// Stores information about a package.
 pub struct Package {
