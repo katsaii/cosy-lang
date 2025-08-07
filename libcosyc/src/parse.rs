@@ -5,14 +5,13 @@ use crate::source::File;
 use crate::error::IssueManager;
 
 /// Parses the contents of a Cosy source file into untyped HIR.
-pub struct Parser<'a, 'hir> {
+pub struct Parser<'a> {
     issues : &'a mut IssueManager,
     file : &'a File,
     lexer : lex::Lexer<'a>,
-    module : &'hir hir::Module,
 }
 
-impl<'a, 'hir> Parser<'a, 'hir> {
+impl<'a> Parser<'a> {
     /// Parses the given file, writing its generated HIR to the given module.
     ///
     /// Any errors encountered whilst parsing are reported to `issues`.
@@ -22,14 +21,14 @@ impl<'a, 'hir> Parser<'a, 'hir> {
     pub fn parse(
         issues : &'a mut IssueManager,
         file : &'a File,
-        module : &'hir mut hir::Module,
+        module : &mut hir::Module,
     ) -> bool {
         let lexer = lex::Lexer::new(file.get_src());
-        let mut parser = Self { issues, file, lexer, module };
-        parser.parse_module()
+        let mut parser = Self { issues, file, lexer };
+        parser.parse_module(module)
     }
 
-    fn parse_module(&mut self) -> bool {
+    fn parse_module(&mut self, module : &mut hir::Module) -> bool {
         true
     }
 }

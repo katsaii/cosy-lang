@@ -1,6 +1,7 @@
-mod cmd_run;
 mod cmd_debug_lex;
+mod cmd_debug_parse;
 mod cmd_debug_error;
+mod cmd_run;
 
 use std::{ env, io, io::IsTerminal, process::ExitCode };
 use clap::{ Parser, Subcommand, Args };
@@ -31,6 +32,7 @@ enum CosycCommand {
 #[derive(Subcommand)]
 enum CosycCommandDebug {
     Lex(cmd_debug_lex::Args),
+    Parse(cmd_debug_parse::Args),
     Error(cmd_debug_error::Args),
 }
 
@@ -40,6 +42,7 @@ pub(super) fn execute(sess : &mut Session) -> ExitCode {
         CosycCommand::Run(args) => cmd_run::execute(sess, args),
         CosycCommand::Debug(debug_cmd) => match debug_cmd {
             CosycCommandDebug::Lex(args) => cmd_debug_lex::execute(sess, args),
+            CosycCommandDebug::Parse(args) => cmd_debug_parse::execute(sess, args),
             CosycCommandDebug::Error(args) => cmd_debug_error::execute(sess, args),
         },
     }

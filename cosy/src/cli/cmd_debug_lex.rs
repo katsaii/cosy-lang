@@ -44,7 +44,6 @@ pub(super) fn execute(sess : &mut Session, args : Args) {
             break;
         }
     }
-    println!("tokenisation output for: {}", args.file_path);
     println!(
         "{:<w_span$} | {:<w_name$} | {}",
         HEAD_SPAN, HEAD_NAME, HEAD_SRC, w_span=max_span, w_name=max_name
