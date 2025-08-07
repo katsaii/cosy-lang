@@ -271,3 +271,7 @@ impl fmt::Display for Span {
         write!(out, "[{}..{}]", self.start, self.end)
     }
 }
+
+/// An owned section of source code, such as a string literal after resolving
+/// escape codes.
+pub type Symbol = String;

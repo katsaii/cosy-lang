@@ -1,11 +1,11 @@
 -- simple main function
 
-fn main() = begin
+fn main()
 
-    var m = 3
-    var n = m
+    local m = 3
+    local n = m
 
-    --var n = if condition then 1 else 2 end
+    --local n = if condition then 1 else 2 end
     --        ... + m * 3
 
     n

@@ -1,6 +1,7 @@
 pub mod source;
 pub mod error;
 pub mod parse;
+pub mod typing;
 pub mod reporting;
 
 /// Cosy language file extension.

@@ -10,6 +10,8 @@ pub enum Token {
     NumIntegral,
     NumRational,
     NumRadix,
+    Bool(bool),
+    Nothing,
     // symbols
     LParen,
     RParen,
@@ -25,7 +27,7 @@ pub enum Token {
     // keywords
     Begin,
     End,
-    Var,
+    Local,
     Fn,
     Mod,
     // miscellaneous

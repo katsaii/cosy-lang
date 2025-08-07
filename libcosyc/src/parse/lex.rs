@@ -118,9 +118,12 @@ impl<'a> Cursor<'a> {
                 match &self.src[offset_start..self.peek_1.0] {
                     "begin" => Token::Begin,
                     "end" => Token::End,
-                    "var" => Token::Var,
+                    "local" => Token::Local,
                     "fn" => Token::Fn,
-                    "mod" => Token::Mod,
+                    "module" => Token::Module,
+                    "true" => Token::Bool(true),
+                    "false" => Token::Bool(false),
+                    "nothing" => Token::Nothing,
                     _ => Token::Id { is_hole }
                 }
             },
