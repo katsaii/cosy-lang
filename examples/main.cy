@@ -8,6 +8,6 @@ fn main()
     --local n = if condition then 1 else 2 end
     --        ... + m * 3
 
-    -n
+    ... n
 
 end

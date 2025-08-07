@@ -3,29 +3,7 @@ use crate::source::FileManager;
 use crate::error::{ Diagnostic, Label, Note, Message, Severity, IssueStats };
 use crate::reporting::{ Renderer, PrettyPrinter, Colour, Style };
 
-/// Renders diagnostic information in a pretty format:
-///
-/// ```txt
-/// error: unexpected symbol in this sequence
-///  >>> main.cy:2:19
-/// 2 |     var val = 1 + 2 i
-///   '                     ^
-///  >>> main.cy:2:13
-/// 2 |     var val = 1 + 2 i
-///   '               ----- expected a new line or `;;` symbol after this item
-///  >>> main.cy:2:18
-/// 2 |     var val = 1 + 2 ;; i
-///   '                    ++++ add the `;;` symbol here
-///
-/// info: unnecessary parenthesis
-///  >>> main.cy:3:11
-/// 3 |     var x = (
-/// : | ___________^
-/// 5 | |   )
-///   ' |___^
-///
-/// error: displayed 2 message(s)
-/// ```
+/// Renders diagnostic information in a pretty format.
 ///
 /// Uses coloured text if the output stream supports it. Otherwise, the
 /// output will just be monochrome.

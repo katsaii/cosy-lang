@@ -31,7 +31,7 @@ pub(super) fn execute(sess : &mut Session, args : Args) {
         let token_name = format!("{:?}", token.1);
         let severity = match &token.1 {
             Token::Unknown(..) => Severity::Fatal,
-            _ => Severity::Info,
+            _ => Severity::Warning,
         };
         let mut diag = Diagnostic::new(severity)
             .message(("token name: {}", [token_name.into()]))
@@ -50,7 +50,7 @@ pub(super) fn execute(sess : &mut Session, args : Args) {
     }
     let span_end = lexer.peek_span();
     let span_full = span_start.join(span_end);
-    Diagnostic::info()
+    Diagnostic::warning()
         .message("full span")
         .label((file.make_location(&span_full), [
                 ("span: {}", [format!("{}", span_full).into()]).into(),

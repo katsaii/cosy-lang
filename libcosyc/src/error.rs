@@ -194,7 +194,6 @@ impl<M : Into<Message>> From<M> for Note {
 /// Affects the highlighting colour of the error in the output window.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Severity {
-    Info,
     Warning,
     Fatal,
     Bug,
@@ -204,7 +203,6 @@ impl Severity {
     /// Returns the string representation of this severity.
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::Info => "info",
             Self::Warning => "warning",
             Self::Fatal => "error",
             Self::Bug => "bug",
@@ -214,7 +212,6 @@ impl Severity {
     /// Returns the colour of this severity.
     pub fn as_colour(&self) -> Colour {
         match self {
-            Self::Info => Colour::Green,
             Self::Warning => Colour::Yellow,
             Self::Fatal => Colour::BrightRed,
             Self::Bug => Colour::Magenta,
@@ -262,11 +259,6 @@ impl Diagnostic {
                 https://github.com/katsaii/cosy-lang/issues"),
             _ => diag,
         }
-    }
-
-    /// Creates an empty info message.
-    pub fn info() -> Self {
-        Self::new(Severity::Info)
     }
 
     /// Creates an empty warning message.
@@ -362,12 +354,11 @@ impl IssueManager {
         if !self.has_messages() {
             return None;
         }
-        let mut max_severity = Severity::Info;
+        let mut max_severity = Severity::Warning;
         let mut counts = [0, 0, 0, 0];
         for error in &self.errors {
             let severity = &error.severity;
             match &severity {
-                Severity::Info => counts[0] += 1,
                 Severity::Warning => counts[1] += 1,
                 Severity::Fatal => counts[2] += 1,
                 Severity::Bug => counts[3] += 1,
@@ -378,7 +369,6 @@ impl IssueManager {
         }
         Some(IssueStats {
             max_severity,
-            infos : counts[0],
             warnings : counts[1],
             errors : counts[2],
             bugs : counts[3],
@@ -391,8 +381,6 @@ impl IssueManager {
 pub struct IssueStats {
     /// The max error class reached by the compiler.
     pub max_severity : Severity,
-    /// The number of infos encountered.
-    pub infos : usize,
     /// The number of warnings encountered.
     pub warnings : usize,
     /// The number of fatal errors encountered.
@@ -404,6 +392,6 @@ pub struct IssueStats {
 impl IssueStats {
     /// Returns the total number of messages that occurred.
     pub fn total(&self) -> usize {
-        self.infos + self.warnings + self.errors + self.bugs
+        self.warnings + self.errors + self.bugs
     }
 }
