@@ -29,7 +29,7 @@ pub enum Token {
     End,
     Local,
     Fn,
-    Mod,
+    Module,
     // miscellaneous
     Comment,
     LineBreak { implicit : bool },

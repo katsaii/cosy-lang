@@ -16,7 +16,7 @@ pub enum ExprKind {
     Block {
         locals : Vec<LocalId>,
         stmts : Vec<Stmt>,
-        result : Expr
+        result : Box<Expr>
     },
 }
 
@@ -26,7 +26,7 @@ pub struct Expr {
     /// The span of this expression in the source code.
     pub location : Location,
     /// The type of this expression.
-    //pub ty_var : TypeId,
+    pub ty_var : TypeId,
 }
 
 /// All statements available to Cosy.
