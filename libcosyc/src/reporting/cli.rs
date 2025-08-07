@@ -57,9 +57,8 @@ impl Renderer for CliRenderer {
         for label in &diag.primary_labels {
             self.render_label(out, label, files, colour, '^')?;
         }
-        let colour_secondary = Severity::Info.as_colour();
         for label in &diag.secondary_labels {
-            self.render_label(out, label, files, colour_secondary, '-')?;
+            self.render_label(out, label, files, Colour::BrightBlue, '-')?;
         }
         // render notes
         for note in &diag.notes {

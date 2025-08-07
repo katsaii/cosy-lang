@@ -1,4 +1,4 @@
-pub mod token;
+mod token;
 
 pub use token::Token;
 
@@ -13,20 +13,49 @@ pub type TokenSpan = (Span, Token);
 pub struct Lexer<'a> {
     cursor : Cursor<'a>,
     peeked : TokenSpan,
+    peeked_linebreak : bool,
 }
 
 impl<'a> Lexer<'a> {
     /// Creates a new lexer from the given source code.
     pub fn new(src : &'a str) -> Self {
         let mut cursor = Cursor::new(src);
-        let peeked = cursor.read_token();
-        Self { cursor, peeked }
+        let (peeked, peeked_linebreak) = Self::read_token_no_whitespace(&mut cursor);
+        Self { cursor, peeked, peeked_linebreak }
     }
 
     /// Advances the lexer, returning the most recently peeked token.
     pub fn next(&mut self) -> TokenSpan {
-        let peeked_new = self.cursor.read_token();
-        mem::replace(&mut self.peeked, peeked_new)
+        let (peeked, is_break) = Self::read_token_no_whitespace(&mut self.cursor);
+        self.peeked_linebreak = is_break;
+        mem::replace(&mut self.peeked, peeked)
+    }
+
+    fn read_token_no_whitespace(cursor : &mut Cursor<'a>) -> (TokenSpan, bool) {
+        let mut is_break = false;
+        let mut is_break_implicit = false;
+        let mut is_continue = false;
+        let peeked = loop {
+            match Self::read_token_no_comment(cursor) {
+                (_, Token::LineBreak { implicit }) => if implicit {
+                    is_break_implicit = true;
+                } else {
+                    is_break = true;
+                },
+                (_, Token::LineContinue) => is_continue = true,
+                x => break x,
+            }
+        };
+        (peeked, is_break || is_break_implicit && !is_continue)
+    }
+
+    fn read_token_no_comment(cursor : &mut Cursor<'a>) -> TokenSpan {
+        loop {
+            match cursor.read_token() {
+                (_, Token::Comment) => continue,
+                x => break x,
+            }
+        }
     }
 
     /// Returns the type of the currently peeked token.
@@ -34,6 +63,11 @@ impl<'a> Lexer<'a> {
 
     /// Returns the span of the currently peeked token.
     pub fn peek_span(&self) -> &Span { &self.peeked.0 }
+
+    /// Returns whether the there is a line break before the peeked token.
+    ///
+    /// This is Cosy's way of handling automatic semicolon insertion.
+    pub fn peek_linebreak(&self) -> bool { self.peeked_linebreak }
 }
 
 struct Cursor<'a> {

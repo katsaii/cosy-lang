@@ -33,12 +33,17 @@ pub(super) fn execute(sess : &mut Session, args : Args) {
             Token::Unknown(..) => Severity::Fatal,
             _ => Severity::Info,
         };
-        Diagnostic::new(severity)
+        let mut diag = Diagnostic::new(severity)
             .message(("token name: {}", [token_name.into()]))
             .label((file.make_location(&token_span), [
                 ("span: {}", [format!("{}", token_span).into()]).into(),
-            ]))
-            .report(&mut sess.issues);
+            ]));
+        if lexer.peek_linebreak() {
+            diag = diag.label_other((file.make_location(&lexer.peek_span()), [
+                ("next line continues here").into(),
+            ]));
+        }
+        diag.report(&mut sess.issues);
         if token.1 == Token::EoF {
             break;
         }

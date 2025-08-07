@@ -52,7 +52,6 @@ pub enum DeclKind {
         name : Symbol,
         body : Expr,
     },
-    Module(Symbol),
 }
 
 #[derive(Debug)]
@@ -60,6 +59,27 @@ pub struct Decl {
     pub kind : DeclKind,
     /// The span of this declaration in the source code.
     pub location : Location,
-    /// Whether this declaration is public.
-    pub is_public : bool,
+}
+
+/// Top-level declaration visibility.
+pub enum Visibility {
+    Public,
+    Internal,
+}
+
+impl Default for Visibility {
+    fn default() -> Self { Visibility::Internal }
+}
+
+/// A module associates declarations with a name. Modules are hierarchial, and
+/// can contain submodules.
+pub struct Module {
+    /// Submodules of this module. Often declared on the first line of a
+    /// module definition.
+    pub submodules : Vec<(Visibility, Module)>,
+    /// The name of this module. If the module is a file, this will be the file
+    /// name.
+    pub name : String,
+    /// Top-level declarations 
+    pub decls : Vec<(Visibility, Decl)>,
 }

@@ -214,7 +214,7 @@ impl Severity {
     /// Returns the colour of this severity.
     pub fn as_colour(&self) -> Colour {
         match self {
-            Self::Info => Colour::BrightBlue,
+            Self::Info => Colour::Green,
             Self::Warning => Colour::Yellow,
             Self::Fatal => Colour::BrightRed,
             Self::Bug => Colour::Magenta,
