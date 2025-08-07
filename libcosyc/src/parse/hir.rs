@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::source::{ Symbol, Location };
 use crate::typing::TypeId;
 
@@ -62,6 +63,7 @@ pub struct Decl {
 }
 
 /// Top-level declaration visibility.
+#[derive(Debug)]
 pub enum Visibility {
     Public,
     Internal,
@@ -73,13 +75,10 @@ impl Default for Visibility {
 
 /// A module associates declarations with a name. Modules are hierarchial, and
 /// can contain submodules.
+#[derive(Debug, Default)]
 pub struct Module {
-    /// Submodules of this module. Often declared on the first line of a
-    /// module definition.
-    pub submodules : Vec<(Visibility, Module)>,
-    /// The name of this module. If the module is a file, this will be the file
-    /// name.
-    pub name : String,
+    /// A map from submodule names to submodule definitions.
+    pub submodules : HashMap<String, (Visibility, Module)>,
     /// Top-level declarations 
     pub decls : Vec<(Visibility, Decl)>,
 }

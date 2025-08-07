@@ -1,6 +1,6 @@
 use std::{ io, cmp };
 use crate::source::FileManager;
-use crate::error::{ Diagnostic, Label, Note, Message, Severity, IssueStats };
+use crate::error::{ Diagnostic, Label, Note, Message, IssueStats };
 use crate::reporting::{ Renderer, PrettyPrinter, Colour, Style };
 
 /// Renders diagnostic information in a pretty format.
