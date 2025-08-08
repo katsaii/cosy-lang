@@ -1,4 +1,4 @@
-pub mod hir;
+pub mod asg;
 pub mod lex;
 
 use std::result;
@@ -8,7 +8,7 @@ use crate::error::{ IssueManager, Diagnostic };
 
 type Result<T> = result::Result<T, ()>;
 
-/// Parses the contents of a Cosy source file into untyped HIR.
+/// Parses the contents of a Cosy source file into untyped ASG.
 pub struct Parser<'a> {
     issues : &'a mut IssueManager,
     file : &'a File,
@@ -16,7 +16,7 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    /// Parses a file, writing its generated HIR to the given module.
+    /// Parses a file, writing its generated ASG to the given module.
     ///
     /// Any errors encountered whilst parsing are reported to `issues`.
     ///
@@ -25,7 +25,7 @@ impl<'a> Parser<'a> {
     pub fn parse(
         issues : &'a mut IssueManager,
         file : &'a File,
-        module : &mut hir::Module,
+        module : &mut asg::Module,
     ) -> bool {
         let lexer = lex::Lexer::new(file.get_src());
         let mut parser = Self { issues, file, lexer };
@@ -66,9 +66,9 @@ impl<'a> Parser<'a> {
         Err(())
     }
 
-    fn parse_module(&mut self, module : &mut hir::Module) -> Result<()> {
+    fn parse_module(&mut self, module : &mut asg::Module) -> Result<()> {
         while !matches!(self.lexer.peek(), Token::EoF) {
-            let visibility = hir::Visibility::default();
+            let visibility = asg::Visibility::default();
             if let Some(result) = flob(self.parse_decl()) {
                 if let Ok(decl) = result {
                     module.decls.push((visibility, decl));
@@ -79,9 +79,9 @@ impl<'a> Parser<'a> {
                 self.expect(Token::Module)?;
                 let location = self.peek_location();
                 if let Ok(id) = self.parse_id() {
-                    module.submodules.insert(id, hir::SubModule {
+                    module.submodules.insert(id, asg::SubModule {
                         location,
-                        module : hir::Module::default(),
+                        module : asg::Module::default(),
                         visibility
                     });
                 } else {
@@ -92,7 +92,7 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    fn parse_decl(&mut self) -> Result<Option<hir::Decl>> {
+    fn parse_decl(&mut self) -> Result<Option<asg::Decl>> {
         let decl = if matches!(self.lexer.peek(), Token::Fn) {
             self.lexer.next();
             let location = self.peek_location();
@@ -100,9 +100,9 @@ impl<'a> Parser<'a> {
             self.expect(Token::LParen)?;
             self.expect(Token::RParen)?;
             let body = self.parse_expr()?;
-            hir::Decl {
+            asg::Decl {
                 location,
-                kind : hir::DeclKind::Fn { name, body }
+                kind : asg::DeclKind::Fn { name, body }
             }
         } else {
             return Ok(None);
@@ -110,13 +110,21 @@ impl<'a> Parser<'a> {
         Ok(Some(decl))
     }
 
-    fn parse_expr(&mut self) -> Result<hir::Expr> {
-        let location = self.peek_location();
-        Ok(hir::Expr {
-            location,
-            kind : hir::ExprKind::Bool(true),
-            ty_var : 0,
-        })
+    fn parse_expr(&mut self) -> Result<asg::Expr> {
+        self.parse_expr_terminal()
+    }
+
+    fn parse_expr_terminal(&mut self) -> Result<asg::Expr> {
+        let expr = if let Token::Bool(val) = self.lexer.peek() {
+            let (span, _) = self.lexer.next();
+            asg::Expr {
+                location : self.location(&span),
+                kind : asg::ExprKind::Bool(true),
+            }
+        } else {
+            return Err(())
+        };
+        Ok(expr)
     }
 
     fn parse_id(&mut self) -> Result<Symbol> {

@@ -1,9 +1,8 @@
+pub use crate::parse::asg::LocalId;
+
 use std::collections::HashMap;
 use crate::source::{ Symbol, Location };
-use crate::typing::TypeId;
-
-/// Local variables become numeric ids in the parser.
-pub type LocalId = usize;
+use crate::{ typing::TypeId, parse::asg };
 
 /// All expressions available to Cosy. Note: this doesn't include constructs
 /// like `var`, since those are statements.
