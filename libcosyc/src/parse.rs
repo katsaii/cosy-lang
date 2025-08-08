@@ -1,14 +1,25 @@
-pub mod asg;
+pub mod ast;
 pub mod lex;
 
-use std::result;
 use lex::Token;
-use crate::source::{ Location, File, Span, Symbol };
+use crate::source::File;
 use crate::error::{ IssueManager, Diagnostic };
 
-type Result<T> = result::Result<T, ()>;
+macro_rules! expect {
+    ($self:expr, $p:pat) => (match $self.lexer.peek() {
+        $p => Some($self.lexer.next()),
+        _ => None,
+    });
+}
 
-/// Parses the contents of a Cosy source file into untyped ASG.
+macro_rules! unterminated {
+    ($self:expr, $p:pat) => (match $self.lexer.peek() {
+        $p => false,
+        x => true,
+    });
+}
+
+/// Parses the contents of a Cosy source file into untyped AST.
 pub struct Parser<'a> {
     issues : &'a mut IssueManager,
     file : &'a File,
@@ -16,72 +27,103 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    /// Parses a file, writing its generated ASG to the given module.
+    /// Parses a file, returning its generated AST nodes as a `Vec`.
     ///
     /// Any errors encountered whilst parsing are reported to `issues`.
-    ///
-    /// Returns `true` if the file was parsed successfully, and `false` if any
-    /// fatal errors occurred.
     pub fn parse(
         issues : &'a mut IssueManager,
         file : &'a File,
-        module : &mut asg::Module,
-    ) -> bool {
+    ) -> Vec<ast::Node> {
         let lexer = lex::Lexer::new(file.get_src());
         let mut parser = Self { issues, file, lexer };
-        let is_well_formed = parser.parse_module(module).is_ok();
-        is_well_formed && !parser.issues.has_errors()
-    }
-
-    fn peek_location(&self) -> Location {
-        self.location(self.lexer.peek_span())
-    }
-
-    fn location(&self, span : &Span) -> Location {
-        self.file.make_location(span)
+        parser.parse_module_body()
     }
 
     fn recover(&mut self) {
-        while !matches!(self.lexer.peek(),
+        while unterminated!(self,
             | Token::EoF
             | Token::End
             | Token::Local
             | Token::Fn
-            | Token::Module
+            | Token::Mod
         ) {
             self.lexer.next();
         }
     }
 
-    fn expect(&mut self, expected : Token) -> Result<lex::TokenSpan> {
+    fn assert_token(&mut self, expected : Token) -> Option<lex::TokenSpan> {
         let (span, got) = self.lexer.next();
         if expected == got {
-            return Ok((span, got));
+            return Some((span, got));
         }
-        let location = self.file.make_location(&span);
         Diagnostic::error()
             .message(("expected {}, got {}", [expected.into(), got.into()]))
-            .label(location)
+            .label(self.file.location(&span))
             .report(self.issues);
-        Err(())
+        None
     }
 
-    fn parse_module(&mut self, module : &mut asg::Module) -> Result<()> {
+    fn assert(&mut self, message : &str) -> Option<()> {
+        let (span, got) = self.lexer.next();
+        Diagnostic::error()
+            .message(("{}, got {}", [message.into(), got.into()]))
+            .label(self.file.location(&span))
+            .report(self.issues);
+        None
+    }
+
+    fn parse_module_body(&mut self) -> Vec<ast::Node> {
+        let mut nodes = Vec::new();
+        while unterminated!(self, Token::EoF | Token::End) {
+            if let Some(result) = self.try_parse_decl() {
+                if let Some(decl) = result {
+                    nodes.push(decl);
+                } else {
+                    self.recover();
+                }
+            } else {
+                self.assert("invalid definition");
+            }
+        }
+        nodes
+    }
+
+    fn try_parse_decl(&mut self) -> Option<Option<ast::Node>> {
+        let node = if let Some((span, _)) = expect!(self, Token::Fn) {
+            Diagnostic::unimplemented()
+                .message("functions")
+                .label(self.file.location(&span))
+                .report(self.issues);
+            None
+        } else if let Some((span, _)) = expect!(self, Token::Mod) {
+            Diagnostic::unimplemented()
+                .message("modules")
+                .label(self.file.location(&span))
+                .report(self.issues);
+            None
+        } else {
+            return None;
+        };
+        Some(node)
+    }
+
+    /*
+    fn parse_module(&mut self, module : &mut ast::Mod) -> Option<()> {
         while !matches!(self.lexer.peek(), Token::EoF) {
-            let visibility = asg::Visibility::default();
-            if let Some(result) = flob(self.parse_decl()) {
-                if let Ok(decl) = result {
+            let visibility = ast::Visibility::default();
+            if let Some(option) = flob(self.parse_decl()) {
+                if let Ok(decl) = option {
                     module.decls.push((visibility, decl));
                 } else {
                     self.recover();
                 }
             } else {
-                self.expect(Token::Module)?;
+                self.expect(Token::Mod)?;
                 let location = self.peek_location();
                 if let Ok(id) = self.parse_id() {
-                    module.submodules.insert(id, asg::SubModule {
+                    module.submodules.insert(id, ast::SubModule {
                         location,
-                        module : asg::Module::default(),
+                        module : ast::Mod::default(),
                         visibility
                     });
                 } else {
@@ -92,7 +134,7 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    fn parse_decl(&mut self) -> Result<Option<asg::Decl>> {
+    fn parse_decl(&mut self) -> Option<Option<ast::Decl>> {
         let decl = if matches!(self.lexer.peek(), Token::Fn) {
             self.lexer.next();
             let location = self.peek_location();
@@ -100,9 +142,9 @@ impl<'a> Parser<'a> {
             self.expect(Token::LParen)?;
             self.expect(Token::RParen)?;
             let body = self.parse_expr()?;
-            asg::Decl {
+            ast::Decl {
                 location,
-                kind : asg::DeclKind::Fn { name, body }
+                kind : ast::DeclKind::Fn { name, body }
             }
         } else {
             return Ok(None);
@@ -110,16 +152,16 @@ impl<'a> Parser<'a> {
         Ok(Some(decl))
     }
 
-    fn parse_expr(&mut self) -> Result<asg::Expr> {
+    fn parse_expr(&mut self) -> Option<ast::Expr> {
         self.parse_expr_terminal()
     }
 
-    fn parse_expr_terminal(&mut self) -> Result<asg::Expr> {
+    fn parse_expr_terminal(&mut self) -> Option<ast::Expr> {
         let expr = if let Token::Bool(val) = self.lexer.peek() {
             let (span, _) = self.lexer.next();
-            asg::Expr {
-                location : self.location(&span),
-                kind : asg::ExprKind::Bool(true),
+            ast::Expr {
+                location : self.file.location(&span),
+                kind : ast::NodeKind::Bool(true),
             }
         } else {
             return Err(())
@@ -127,7 +169,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    fn parse_id(&mut self) -> Result<Symbol> {
+    fn parse_id(&mut self) -> Option<Symbol> {
         let span = if let Token::IdRaw { unclosed } = self.lexer.peek() {
             if *unclosed {
                 //let location = 
@@ -142,12 +184,5 @@ impl<'a> Parser<'a> {
         };
         Ok(self.lexer.slice(&span).to_string())
     }
-}
-
-fn flob<T, E>(x : result::Result<Option<T>, E>) -> Option<result::Result<T, E>> {
-    match x {
-        Ok(Some(x)) => Some(Ok(x)),
-        Ok(None) => None,
-        Err(err) => Some(Err(err)),
-    }
+    */
 }

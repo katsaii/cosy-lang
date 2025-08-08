@@ -129,7 +129,7 @@ impl File {
     }
 
     /// Creates a new location from a given span, in the current source file.
-    pub fn make_location(&self, span : &Span) -> Location {
+    pub fn location(&self, span : &Span) -> Location {
         Location {
             span : span.clone(),
             file_id : self.file_id,

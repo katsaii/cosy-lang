@@ -1,7 +1,7 @@
-use libcosyc::parse::{ Parser, asg };
+use libcosyc::parse::Parser;
 use libcosyc::Session;
 
-/// Parses the contents of a file and prints its untyped ASG.
+/// Parses the contents of a file and prints its untyped AST.
 #[derive(super::Args)]
 pub(super) struct Args {
     /// Path of the `.cy` file to parse.
@@ -18,8 +18,6 @@ pub(super) fn execute(sess : &mut Session, args : Args) {
         },
     };
     let file = sess.files.get_file(file_id);
-    let mut module = asg::Module::default();
-    if Parser::parse(&mut sess.issues, file, &mut module) {
-        println!("{:#?}", module);
-    }
+    let ast_node = Parser::parse(&mut sess.issues, file);
+    println!("{:#?}", ast_node);
 }

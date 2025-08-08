@@ -35,11 +35,11 @@ pub(super) fn execute(sess : &mut Session, args : Args) {
         };
         let mut diag = Diagnostic::new(severity)
             .message(("token name: {}", [token_name.into()]))
-            .label((file.make_location(&token_span), [
+            .label((file.location(&token_span), [
                 ("span: {}", [format!("{}", token_span).into()]).into(),
             ]));
         if lexer.peek_linebreak() {
-            diag = diag.label_other((file.make_location(&lexer.peek_span()), [
+            diag = diag.label_other((file.location(&lexer.peek_span()), [
                 ("next line continues here").into(),
             ]));
         }
@@ -52,14 +52,14 @@ pub(super) fn execute(sess : &mut Session, args : Args) {
     let span_full = span_start.join(span_end);
     Diagnostic::warning()
         .message("full span")
-        .label((file.make_location(&span_full), [
+        .label((file.location(&span_full), [
                 ("span: {}", [format!("{}", span_full).into()]).into(),
                 "multiple captions are split over multiple lines nicely".into(),
             ]))
-        .label_other((file.make_location(&span_start), [
+        .label_other((file.location(&span_start), [
                 "starts here".into(),
             ]))
-        .label_other((file.make_location(&span_end), [
+        .label_other((file.location(&span_end), [
                 "ends here".into(),
             ]))
         .report(&mut sess.issues);

@@ -152,14 +152,13 @@ impl<'a> Cursor<'a> {
                 self.next_while(|x| x == '_' || is_alpha(x) || is_digit(x));
                 self.next_while(|x| x == '\''); // identifiers can end in '
                 match &self.src[offset_start..self.peek_1.0] {
-                    "begin" => Token::Begin,
+                    "do" => Token::Do,
                     "end" => Token::End,
                     "local" => Token::Local,
                     "fn" => Token::Fn,
-                    "module" => Token::Module,
+                    "mod" => Token::Mod,
                     "true" => Token::Bool(true),
                     "false" => Token::Bool(false),
-                    "nothing" => Token::Nothing,
                     _ => Token::Id
                 }
             },
