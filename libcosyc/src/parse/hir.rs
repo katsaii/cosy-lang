@@ -73,12 +73,20 @@ impl Default for Visibility {
     fn default() -> Self { Visibility::Internal }
 }
 
+#[derive(Debug)]
+pub struct SubModule {
+    pub visibility : Visibility,
+    pub module : Module,
+    /// The location of this submodules name in the source code.
+    pub location : Location,
+}
+
 /// A module associates declarations with a name. Modules are hierarchial, and
 /// can contain submodules.
 #[derive(Debug, Default)]
 pub struct Module {
     /// A map from submodule names to submodule definitions.
-    pub submodules : HashMap<String, (Visibility, Module)>,
+    pub submodules : HashMap<Symbol, SubModule>,
     /// Top-level declarations 
     pub decls : Vec<(Visibility, Decl)>,
 }

@@ -264,6 +264,14 @@ impl Span {
     pub fn slice<'a>(&self, src : &'a str) -> &'a str {
         &src[self.start..self.end]
     }
+
+    /// Shrinks this span by `lpad` bytes from the left, and `rpad` bytes from
+    /// the right.
+    pub fn shrink(&self, lpad : usize, rpad : usize) -> Span {
+        let start = self.start + lpad;
+        let end = self.end - rpad;
+        Self::new(start..end)
+    }
 }
 
 impl fmt::Display for Span {

@@ -68,6 +68,9 @@ impl<'a> Lexer<'a> {
     ///
     /// This is Cosy's way of handling automatic semicolon insertion.
     pub fn peek_linebreak(&self) -> bool { self.peeked_linebreak }
+
+    /// Returns a slice of the source code the lexer is parsing.
+    pub fn slice(&self, span : &Span) -> &'a str { &span.slice(self.cursor.src) }
 }
 
 struct Cursor<'a> {
@@ -146,7 +149,6 @@ impl<'a> Cursor<'a> {
             },
             // identifiers
             x if x == '_' || is_alpha(x) => {
-                let is_hole = x == '_';
                 self.next_while(|x| x == '_' || is_alpha(x) || is_digit(x));
                 self.next_while(|x| x == '\''); // identifiers can end in '
                 match &self.src[offset_start..self.peek_1.0] {
@@ -158,7 +160,7 @@ impl<'a> Cursor<'a> {
                     "true" => Token::Bool(true),
                     "false" => Token::Bool(false),
                     "nothing" => Token::Nothing,
-                    _ => Token::Id { is_hole }
+                    _ => Token::Id
                 }
             },
             '`' => {
