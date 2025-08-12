@@ -109,8 +109,48 @@ impl<'a> Parser<'a> {
         Some(node)
     }
 
+    fn parse_stmt(&mut self) -> Option<ast::Stmt> {
+        if let Some(decl) = self.try_parse_decl() {
+            let decl = decl?;
+            Some(ast::Stmt {
+                location : decl.location,
+                kind : ast::StmtKind::Decl(decl),
+            })
+        } else if let Token::Local = self.lexer.peek() {
+            self.lexer.next();
+            let (location, name) = self.parse_id()?;
+            let init = if let Token::Equal = self.lexer.peek() {
+                self.lexer.next();
+                Some(self.parse_expr()?)
+            } else {
+                None
+            };
+            Some(ast::Stmt {
+                location,
+                kind : ast::StmtKind::LocalVar { name, init }
+            })
+        } else {
+            let expr = self.parse_expr()?;
+            Some(ast::Stmt {
+                location : expr.location,
+                kind : ast::StmtKind::Expr(expr),
+            })
+        }
+    }
+
     fn parse_expr(&mut self) -> Option<ast::Expr> {
-        self.parse_expr_block()
+        self.parse_expr_stmt()
+    }
+
+    fn parse_expr_stmt(&mut self) -> Option<ast::Expr> {
+        if let Token::Do = self.lexer.peek() {
+            self.lexer.next();
+            let expr = self.parse_expr_block()?;
+            self.assert_token(Token::End)?;
+            Some(expr)
+        } else {
+            self.parse_expr_terminal()
+        }
     }
 
     fn parse_expr_block(&mut self) -> Option<ast::Expr> {
@@ -136,53 +176,31 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_stmt(&mut self) -> Option<ast::Stmt> {
-        if let Some(decl) = self.try_parse_decl() {
-            let decl = decl?;
-            Some(ast::Stmt {
-                location : decl.location,
-                kind : ast::StmtKind::Decl(decl),
-            })
-        } else if let Token::Local = self.lexer.peek() {
-            self.lexer.next();
-            let (location, name) = self.parse_id()?;
-            let init = if let Token::Equal = self.lexer.peek() {
-                self.lexer.next();
-                Some(self.parse_expr()?)
-            } else {
-                None
-            };
-            Some(ast::Stmt {
-                location,
-                kind : ast::StmtKind::LocalVar { name, init }
-            })
-        } else {
-            let expr = self.parse_expr_stmt()?;
-            Some(ast::Stmt {
-                location : expr.location,
-                kind : ast::StmtKind::Expr(expr),
-            })
-        }
-    }
-
-    fn parse_expr_stmt(&mut self) -> Option<ast::Expr> {
-        if let Token::Do = self.lexer.peek() {
-            self.lexer.next();
-            let expr = self.parse_expr_block()?;
-            self.assert_token(Token::End)?;
-            Some(expr)
-        } else {
-            self.parse_expr_terminal()
-        }
-    }
-
     fn parse_expr_terminal(&mut self) -> Option<ast::Expr> {
         if let Token::NumIntegral = self.lexer.peek() {
             let (span, _) = self.lexer.next();
             let location = self.file.location(&span);
+            let n_string = span.slice(self.file.get_src()).replace("_", "");
+            match n_string.parse::<u128>() {
+                Ok(n) => Some(ast::Expr {
+                    location,
+                    kind : ast::ExprKind::NumIntegral(n),
+                }),
+                Err(err) => {
+                    Diagnostic::error()
+                        .message(("{}", [err.into()]))
+                        .label(location)
+                        .report(self.issues);
+                    None
+                }
+            }
+        } else if let Token::NumRational = self.lexer.peek() {
+            let (span, _) = self.lexer.next();
+            let location = self.file.location(&span);
+            let n_string = span.slice(self.file.get_src()).replace("_", "");
             Some(ast::Expr {
                 location,
-                kind : ast::ExprKind::NumIntegral(0),
+                kind : ast::ExprKind::NumRational(n_string),
             })
         } else if let Token::Bool(b) = self.lexer.peek() {
             let b = *b;
