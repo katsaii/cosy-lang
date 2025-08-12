@@ -2,22 +2,8 @@ pub mod ast;
 pub mod lex;
 
 use lex::Token;
-use crate::source::File;
+use crate::source::{ Location, File };
 use crate::error::{ IssueManager, Diagnostic };
-
-macro_rules! expect {
-    ($self:expr, $p:pat) => (match $self.lexer.peek() {
-        $p => Some($self.lexer.next()),
-        _ => None,
-    });
-}
-
-macro_rules! unterminated {
-    ($self:expr, $p:pat) => (match $self.lexer.peek() {
-        $p => false,
-        x => true,
-    });
-}
 
 /// Parses the contents of a Cosy source file into untyped AST.
 pub struct Parser<'a> {
@@ -27,20 +13,22 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    /// Parses a file, returning its generated AST nodes as a `Vec`.
+    /// Parses a file, into the given module. Returns a `Vec` of any unparsed
+    /// submodules.
     ///
     /// Any errors encountered whilst parsing are reported to `issues`.
     pub fn parse(
         issues : &'a mut IssueManager,
         file : &'a File,
-    ) -> Vec<ast::Node> {
+        module : &mut ast::Module,
+    ) -> () {
         let lexer = lex::Lexer::new(file.get_src());
         let mut parser = Self { issues, file, lexer };
-        parser.parse_module_body()
+        parser.parse_module_body(module);
     }
 
     fn recover(&mut self) {
-        while unterminated!(self,
+        while !matches!(self.lexer.peek(),
             | Token::EoF
             | Token::End
             | Token::Local
@@ -72,117 +60,110 @@ impl<'a> Parser<'a> {
         None
     }
 
-    fn parse_module_body(&mut self) -> Vec<ast::Node> {
-        let mut nodes = Vec::new();
-        while unterminated!(self, Token::EoF | Token::End) {
-            if let Some(result) = self.try_parse_decl() {
+    fn parse_module_body(
+        &mut self,
+        module : &mut ast::Module,
+    ) -> Option<()> {
+        while !matches!(self.lexer.peek(), Token::EoF | Token::End) {
+            let visibility = ast::Visibility::Public;
+            if let Token::Mod = self.lexer.peek() {
+                let span = self.lexer.next().0;
+                let location = self.file.location(&span);
+                Diagnostic::unimplemented()
+                    .message("modules")
+                    .label(location)
+                    .report(self.issues);
+            } else if let Some(result) = self.try_parse_decl() {
                 if let Some(decl) = result {
-                    nodes.push(decl);
+                    module.decls.push(ast::TopDecl { visibility, decl });
                 } else {
                     self.recover();
                 }
             } else {
-                self.assert("invalid definition");
+                self.assert("unexpected symbol in declaration scope");
             }
         }
-        nodes
+        Some(())
     }
 
-    fn try_parse_decl(&mut self) -> Option<Option<ast::Node>> {
-        let node = if let Some((span, _)) = expect!(self, Token::Fn) {
-            Diagnostic::unimplemented()
-                .message("functions")
-                .label(self.file.location(&span))
-                .report(self.issues);
-            None
-        } else if let Some((span, _)) = expect!(self, Token::Mod) {
-            Diagnostic::unimplemented()
-                .message("modules")
-                .label(self.file.location(&span))
-                .report(self.issues);
-            None
+    fn try_parse_decl(&mut self) -> Option<Option<ast::Decl>> {
+        let node = if let Token::Fn = self.lexer.peek() {
+            self.lexer.next();
+            // get function signature
+            let (location, name) = self.parse_id()?;
+            self.assert_token(Token::LParen)?;
+            self.assert_token(Token::RParen)?;
+            // get function body
+            self.assert_token(Token::Do)?;
+            let body = self.parse_expr_block()?;
+            self.assert_token(Token::End)?;
+            Some(ast::Decl {
+                location,
+                kind : ast::DeclKind::Fn { name, body }
+            })
         } else {
             return None;
         };
         Some(node)
     }
 
-    /*
-    fn parse_module(&mut self, module : &mut ast::Mod) -> Option<()> {
-        while !matches!(self.lexer.peek(), Token::EoF) {
-            let visibility = ast::Visibility::default();
-            if let Some(option) = flob(self.parse_decl()) {
-                if let Ok(decl) = option {
-                    module.decls.push((visibility, decl));
-                } else {
-                    self.recover();
-                }
-            } else {
-                self.expect(Token::Mod)?;
-                let location = self.peek_location();
-                if let Ok(id) = self.parse_id() {
-                    module.submodules.insert(id, ast::SubModule {
-                        location,
-                        module : ast::Mod::default(),
-                        visibility
-                    });
-                } else {
-                    self.recover();
-                }
-            }
-        }
-        Ok(())
-    }
-
-    fn parse_decl(&mut self) -> Option<Option<ast::Decl>> {
-        let decl = if matches!(self.lexer.peek(), Token::Fn) {
-            self.lexer.next();
-            let location = self.peek_location();
-            let name = self.parse_id()?;
-            self.expect(Token::LParen)?;
-            self.expect(Token::RParen)?;
-            let body = self.parse_expr()?;
-            ast::Decl {
-                location,
-                kind : ast::DeclKind::Fn { name, body }
-            }
-        } else {
-            return Ok(None);
-        };
-        Ok(Some(decl))
-    }
-
     fn parse_expr(&mut self) -> Option<ast::Expr> {
-        self.parse_expr_terminal()
+        self.parse_expr_block()
+    }
+
+    fn parse_expr_block(&mut self) -> Option<ast::Expr> {
+        let span = self.lexer.next().0;
+        let location = self.file.location(&span);
+        Diagnostic::unimplemented()
+            .message("blocks")
+            .label(location)
+            .report(self.issues);
+        None
+    }
+
+    fn parse_expr_stmt(&mut self) -> Option<ast::Expr> {
+        if let Token::Do = self.lexer.peek() {
+            self.lexer.next();
+            let expr = self.parse_expr_block()?;
+            self.assert_token(Token::End)?;
+            Some(expr)
+        } else {
+            self.parse_expr_terminal()
+        }
     }
 
     fn parse_expr_terminal(&mut self) -> Option<ast::Expr> {
-        let expr = if let Token::Bool(val) = self.lexer.peek() {
+        if let Token::Bool(val) = self.lexer.peek() {
+            let val = *val;
             let (span, _) = self.lexer.next();
-            ast::Expr {
-                location : self.file.location(&span),
-                kind : ast::NodeKind::Bool(true),
-            }
+            let location = self.file.location(&span);
+            Some(ast::Expr {
+                location,
+                kind : ast::ExprKind::Bool(val),
+            })
         } else {
-            return Err(())
-        };
-        Ok(expr)
+            self.assert_token(Token::LParen)?;
+            let expr = self.parse_expr()?;
+            self.assert_token(Token::RParen)?;
+            Some(expr)
+        }
     }
 
-    fn parse_id(&mut self) -> Option<Symbol> {
+    fn parse_id(&mut self) -> Option<(Location, String)> {
+        let location = self.file.location(&self.lexer.peek_span());
         let span = if let Token::IdRaw { unclosed } = self.lexer.peek() {
-            if *unclosed {
-                //let location = 
+            let unclosed = *unclosed;
+            let (span, _) = self.lexer.next();
+            if unclosed {
                 //Diagnostic::error()
                 //    .label()
-                return Err(());
+                span.shrink(1, 0)
+            } else {
+                span.shrink(1, 1)
             }
-            self.lexer.peek_span().shrink(1, 1)
         } else {
-            let (span, _) = self.expect(Token::Id)?;
-            span
+            self.assert_token(Token::Id)?.0
         };
-        Ok(self.lexer.slice(&span).to_string())
+        Some((location, self.lexer.slice(&span).to_string()))
     }
-    */
 }

@@ -1,18 +1,21 @@
+//! Similar to the AST, except it supports type annoations, and simplifies some
+//! language constructs.
+
+pub use crate::parse::ast::Visibility;
+
 use std::collections::HashMap;
 use crate::source::{ Symbol, Location };
 use crate::typing::TypeId;
 
 pub type LocalId = usize;
 
-/// All expressions available to Cosy. Note: this doesn't include constructs
-/// like `var`, since those are statements.
+/// See [`crate::parse::ast::ExprKind`].
 #[derive(Debug)]
 pub enum ExprKind {
     NumIntegral(u128),
     NumRational(Symbol),
     Bool(bool),
     LocalId(LocalId),
-    Nothing,
     Block {
         locals : Vec<LocalId>,
         stmts : Vec<Stmt>,
@@ -29,7 +32,7 @@ pub struct Expr {
     pub ty_var : TypeId,
 }
 
-/// All statements available to Cosy.
+/// See [`crate::parse::ast::StmtKind`].
 #[derive(Debug)]
 pub enum StmtKind {
     Decl(Decl),
@@ -44,8 +47,7 @@ pub struct Stmt {
     pub location : Location,
 }
 
-/// All declarations available to Cosy. Note: these should all be valid
-/// top-level declarations.
+/// See [`crate::parse::ast::DeclKind`].
 #[derive(Debug)]
 pub enum DeclKind {
     Fn {
@@ -59,17 +61,6 @@ pub struct Decl {
     pub kind : DeclKind,
     /// The span of this declaration in the source code.
     pub location : Location,
-}
-
-/// Top-level declaration visibility.
-#[derive(Debug)]
-pub enum Visibility {
-    Public,
-    Internal,
-}
-
-impl Default for Visibility {
-    fn default() -> Self { Visibility::Internal }
 }
 
 #[derive(Debug)]

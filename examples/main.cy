@@ -1,6 +1,6 @@
 -- simple main function
 
-fn main()
+fn main() do
 
     local m = 3
     local n = m

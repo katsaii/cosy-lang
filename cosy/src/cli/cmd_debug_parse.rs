@@ -1,4 +1,4 @@
-use libcosyc::parse::Parser;
+use libcosyc::parse::{ ast, Parser };
 use libcosyc::Session;
 
 /// Parses the contents of a file and prints its untyped AST.
@@ -17,7 +17,8 @@ pub(super) fn execute(sess : &mut Session, args : Args) {
             return;
         },
     };
+    let mut module = ast::Module::default();
     let file = sess.files.get_file(file_id);
-    let ast_node = Parser::parse(&mut sess.issues, file);
-    println!("{:#?}", ast_node);
+    let result = Parser::parse(&mut sess.issues, file, &mut module);
+    println!("{:#?}", result);
 }
