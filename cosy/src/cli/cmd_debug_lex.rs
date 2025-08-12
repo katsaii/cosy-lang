@@ -34,7 +34,7 @@ pub(super) fn execute(sess : &mut Session, args : Args) {
     let mut max_name = HEAD_NAME.len();
     loop {
         let token = lexer.next();
-        let token_span = format!("{}", token.0);
+        let token_span = format!("{:?}", token.0);
         let token_name = format!("{:?}", token.1);
         let token_src = format!("{:?}", token.0.slice(&src));
         max_span = cmp::max(max_span, token_span.len());

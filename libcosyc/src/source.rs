@@ -32,7 +32,7 @@ impl Location {
 
 impl fmt::Debug for Location {
     fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
-        write!(out, "<{} file {}>", self.span, self.file_id)
+        write!(out, "<{:?} file {}>", self.span, self.file_id)
     }
 }
 
@@ -280,15 +280,9 @@ impl Span {
     }
 }
 
-impl fmt::Display for Span {
-    fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
-        write!(out, "[{}..{}]", self.start, self.end)
-    }
-}
-
 impl fmt::Debug for Span {
     fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(self, out)
+        write!(out, "[{}..{}]", self.start, self.end)
     }
 }
 
