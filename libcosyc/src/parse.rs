@@ -28,13 +28,15 @@ impl<'a> Parser<'a> {
     }
 
     fn recover(&mut self) {
-        while !matches!(self.lexer.peek(),
-            | Token::EoF
-            | Token::End
-            | Token::Local
-            | Token::Fn
-            | Token::Mod
-        ) {
+        while
+            !matches!(self.lexer.peek(),
+                | Token::End
+                | Token::Else
+                | Token::Local
+                | Token::Fn
+                | Token::Mod
+                | Token::EoF)
+        {
             self.lexer.next();
         }
     }
@@ -64,7 +66,7 @@ impl<'a> Parser<'a> {
         &mut self,
         module : &mut ast::Module,
     ) -> Option<()> {
-        while !matches!(self.lexer.peek(), Token::EoF | Token::End) {
+        while !matches!(self.lexer.peek(), Token::End | Token::EoF) {
             let visibility = ast::Visibility::Public;
             if let Token::Mod = self.lexer.peek() {
                 let span = self.lexer.next().0;
@@ -112,13 +114,55 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr_block(&mut self) -> Option<ast::Expr> {
-        let span = self.lexer.next().0;
+        let span_start = self.lexer.peek_span().clone();
+        let mut stmts = Vec::new();
+        while
+            !matches!(self.lexer.peek(),
+                | Token::End
+                | Token::Else
+                | Token::EoF)
+        {
+            if let Some(stmt) = self.parse_stmt() {
+                stmts.push(stmt);
+            } else {
+                self.recover();
+            }
+        }
+        let span = span_start.join(self.lexer.peek_span());
         let location = self.file.location(&span);
-        Diagnostic::unimplemented()
-            .message("blocks")
-            .label(location)
-            .report(self.issues);
-        None
+        Some(ast::Expr {
+            location,
+            kind : ast::ExprKind::Block(stmts),
+        })
+    }
+
+    fn parse_stmt(&mut self) -> Option<ast::Stmt> {
+        if let Some(decl) = self.try_parse_decl() {
+            let decl = decl?;
+            Some(ast::Stmt {
+                location : decl.location,
+                kind : ast::StmtKind::Decl(decl),
+            })
+        } else if let Token::Local = self.lexer.peek() {
+            self.lexer.next();
+            let (location, name) = self.parse_id()?;
+            let init = if let Token::Equal = self.lexer.peek() {
+                self.lexer.next();
+                Some(self.parse_expr()?)
+            } else {
+                None
+            };
+            Some(ast::Stmt {
+                location,
+                kind : ast::StmtKind::LocalVar { name, init }
+            })
+        } else {
+            let expr = self.parse_expr_stmt()?;
+            Some(ast::Stmt {
+                location : expr.location,
+                kind : ast::StmtKind::Expr(expr),
+            })
+        }
     }
 
     fn parse_expr_stmt(&mut self) -> Option<ast::Expr> {
@@ -133,19 +177,36 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr_terminal(&mut self) -> Option<ast::Expr> {
-        if let Token::Bool(val) = self.lexer.peek() {
-            let val = *val;
+        if let Token::NumIntegral = self.lexer.peek() {
             let (span, _) = self.lexer.next();
             let location = self.file.location(&span);
             Some(ast::Expr {
                 location,
-                kind : ast::ExprKind::Bool(val),
+                kind : ast::ExprKind::NumIntegral(0),
+            })
+        } else if let Token::Bool(b) = self.lexer.peek() {
+            let b = *b;
+            let (span, _) = self.lexer.next();
+            let location = self.file.location(&span);
+            Some(ast::Expr {
+                location,
+                kind : ast::ExprKind::Bool(b),
+            })
+        } else if let Token::LParen = self.lexer.peek() {
+            let (span_start, _) = self.lexer.next();
+            let expr = self.parse_expr()?;
+            let (span_end, _) = self.assert_token(Token::RParen)?;
+            let location = self.file.location(&span_start.join(&span_end));
+            Some(ast::Expr {
+                location,
+                kind : ast::ExprKind::Parens(Box::new(expr)),
             })
         } else {
-            self.assert_token(Token::LParen)?;
-            let expr = self.parse_expr()?;
-            self.assert_token(Token::RParen)?;
-            Some(expr)
+            let (location, name) = self.parse_id()?;
+            Some(ast::Expr {
+                location,
+                kind : ast::ExprKind::Id(name),
+            })
         }
     }
 
@@ -155,8 +216,10 @@ impl<'a> Parser<'a> {
             let unclosed = *unclosed;
             let (span, _) = self.lexer.next();
             if unclosed {
-                //Diagnostic::error()
-                //    .label()
+                Diagnostic::error()
+                    .message("unclosed raw identifier")
+                    .label((location, ["expected a closing '`' here".into()]))
+                    .report(self.issues);
                 span.shrink(1, 0)
             } else {
                 span.shrink(1, 1)

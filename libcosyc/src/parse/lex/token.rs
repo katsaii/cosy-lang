@@ -28,6 +28,7 @@ pub enum Token {
     // keywords
     Do,
     End,
+    Else,
     Local,
     Fn,
     Mod,
@@ -61,6 +62,7 @@ impl Token {
             Self::Comma => "`,`",
             Self::Do => "`do`",
             Self::End  => "`end`",
+            Self::Else  => "`else`",
             Self::Local => "`local`",
             Self::Fn => "`fn`",
             Self::Mod => "`mod`",
@@ -69,6 +71,21 @@ impl Token {
             Self::LineContinue => "`...`",
             Self::EoF => "end of file",
             Self::Unknown(..) => "unexpected char",
+        }
+    }
+
+    /// Parses a token from an alphanumeric lexeme.
+    pub fn from_lexeme(lexeme : &str) -> Self {
+        match lexeme {
+            "do" => Self::Do,
+            "end" => Self::End,
+            "else" => Self::Else,
+            "local" => Self::Local,
+            "fn" => Self::Fn,
+            "mod" => Self::Mod,
+            "true" => Self::Bool(true),
+            "false" => Self::Bool(false),
+            _ => Self::Id,
         }
     }
 }

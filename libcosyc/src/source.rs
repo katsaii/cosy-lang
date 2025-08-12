@@ -11,7 +11,7 @@ pub type FileID = usize;
 pub type LineAndColumn = (usize, usize);
 
 /// Represents a span of bytes within a source file.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Location {
     /// The span information.
     pub span : Span,
@@ -27,6 +27,12 @@ impl Location {
         let file_display = file.path.display();
         let (line, column) = file.find_location(self.span.start);
         format!("{}:{}:{}", file_display, line, column)
+    }
+}
+
+impl fmt::Debug for Location {
+    fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
+        write!(out, "<{} file {}>", self.span, self.file_id)
     }
 }
 
@@ -219,7 +225,7 @@ impl FileManager {
 }
 
 /// Represents a span of bytes within a file.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Span {
     /// The starting byte of the span (inclusive).
     pub start : usize,
@@ -277,6 +283,12 @@ impl Span {
 impl fmt::Display for Span {
     fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
         write!(out, "[{}..{}]", self.start, self.end)
+    }
+}
+
+impl fmt::Debug for Span {
+    fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(self, out)
     }
 }
 

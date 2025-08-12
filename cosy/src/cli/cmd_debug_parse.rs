@@ -19,6 +19,6 @@ pub(super) fn execute(sess : &mut Session, args : Args) {
     };
     let mut module = ast::Module::default();
     let file = sess.files.get_file(file_id);
-    let result = Parser::parse(&mut sess.issues, file, &mut module);
-    println!("{:#?}", result);
+    Parser::parse(&mut sess.issues, file, &mut module);
+    println!("{:#?}", module);
 }

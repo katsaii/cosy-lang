@@ -151,16 +151,7 @@ impl<'a> Cursor<'a> {
             x if x == '_' || is_alpha(x) => {
                 self.next_while(|x| x == '_' || is_alpha(x) || is_digit(x));
                 self.next_while(|x| x == '\''); // identifiers can end in '
-                match &self.src[offset_start..self.peek_1.0] {
-                    "do" => Token::Do,
-                    "end" => Token::End,
-                    "local" => Token::Local,
-                    "fn" => Token::Fn,
-                    "mod" => Token::Mod,
-                    "true" => Token::Bool(true),
-                    "false" => Token::Bool(false),
-                    _ => Token::Id
-                }
+                Token::from_lexeme(&self.src[offset_start..self.peek_1.0])
             },
             '`' => {
                 self.next_while(|x| !(x == '`' || is_eol(x) || is_whitespace(x)));

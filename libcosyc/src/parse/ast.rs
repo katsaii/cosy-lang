@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use crate::source::{ Symbol, Location };
 
 /// All expressions available to Cosy. Note: this doesn't include constructs
@@ -9,10 +8,8 @@ pub enum ExprKind {
     NumRational(Symbol),
     Bool(bool),
     Id(Symbol),
-    Block {
-        stmts : Vec<Stmt>,
-        result : Box<Expr>
-    },
+    Block(Vec<Stmt>),
+    Parens(Box<Expr>),
 }
 
 #[derive(Debug)]
@@ -25,7 +22,10 @@ pub struct Expr {
 /// All statements available to Cosy.
 #[derive(Debug)]
 pub enum StmtKind {
-    Assign(Expr, Expr),
+    LocalVar {
+        name : Symbol,
+        init : Option<Expr>,
+    },
     Decl(Decl),
     Expr(Expr),
 }
