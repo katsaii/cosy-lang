@@ -2,7 +2,7 @@ pub mod ast;
 pub mod lex;
 
 use lex::Token;
-use crate::source::{ Location, File };
+use crate::source::{ Location, File, FileManager };
 use crate::error::{ IssueManager, Diagnostic };
 
 /// Parses the contents of a Cosy source file into untyped AST.
@@ -13,8 +13,7 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    /// Parses a file, into the given module. Returns a `Vec` of any unparsed
-    /// submodules.
+    /// Parses a file, into the given module.
     ///
     /// Any errors encountered whilst parsing are reported to `issues`.
     pub fn parse(
@@ -67,7 +66,12 @@ impl<'a> Parser<'a> {
         module : &mut ast::Module,
     ) -> Option<()> {
         while !matches!(self.lexer.peek(), Token::End | Token::EoF) {
-            let visibility = ast::Visibility::Public;
+            let visibility = if let Token::Pub = self.lexer.peek() {
+                self.lexer.next();
+                ast::Visibility::Public
+            } else {
+                ast::Visibility::Internal
+            };
             if let Token::Mod = self.lexer.peek() {
                 let span = self.lexer.next().0;
                 let location = self.file.location(&span);
@@ -247,4 +251,25 @@ impl<'a> Parser<'a> {
         };
         Some((location, self.lexer.slice(&span).to_string()))
     }
+}
+
+/// Parses a package into a complete module. Also handles the recursive parsing
+/// of submodules.
+///
+/// Any errors encountered whilst parsing are reported to `issues`.
+pub fn from_file(
+    issues : &mut IssueManager,
+    files : &mut FileManager,
+    file_path : &str,
+) -> ast::Module {
+    let mut module_root = ast::Module::default();
+    let file = match files.load((file_path).into()) {
+        Ok(file_id) => files.get_file(file_id),
+        Err(err) => {
+            err.report(issues);
+            return module_root;
+        },
+    };
+    Parser::parse(issues, file, &mut module_root);
+    module_root
 }

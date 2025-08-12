@@ -1,4 +1,4 @@
-use libcosyc::parse::{ ast, Parser };
+use libcosyc::parse::{ self as parse, ast, Parser };
 use libcosyc::Session;
 
 /// Parses the contents of a file and prints its untyped AST.
@@ -10,15 +10,10 @@ pub(super) struct Args {
 }
 
 pub(super) fn execute(sess : &mut Session, args : Args) {
-    let file_id = match sess.files.load((&args.file_path).into()) {
-        Ok(x) => x,
-        Err(err) => {
-            err.report(&mut sess.issues);
-            return;
-        },
-    };
-    let mut module = ast::Module::default();
-    let file = sess.files.get_file(file_id);
-    Parser::parse(&mut sess.issues, file, &mut module);
+    let module = parse::from_file(
+        &mut sess.issues,
+        &mut sess.files,
+        &args.file_path
+    );
     println!("{:#?}", module);
 }

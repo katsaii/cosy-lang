@@ -1,3 +1,5 @@
+--mod my_module
+
 -- simple main function
 
 fn main() do
