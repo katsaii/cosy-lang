@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use libcosyc::Session;
 use libcosyc::error::{ Diagnostic, Severity };
 use libcosyc::parse::lex::{ Lexer, Token };
@@ -10,11 +11,11 @@ use libcosyc::parse::lex::{ Lexer, Token };
 pub(super) struct Args {
     /// Path of the `.cy` file to tokenise.
     #[arg()]
-    file_path : String,
+    file_path : PathBuf,
 }
 
 pub(super) fn execute(sess : &mut Session, args : Args) {
-    let file_id = match sess.files.load((&args.file_path).into()) {
+    let file_id = match sess.files.load(args.file_path) {
         Ok(x) => x,
         Err(diag) => {
             diag.report(&mut sess.issues);

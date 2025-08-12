@@ -5,7 +5,7 @@ use pathdiff::diff_paths;
 use crate::error;
 
 /// A simple handle to a file managed by the compiler.
-pub type FileID = usize;
+pub type FileId = usize;
 
 /// The row and column numbers of a source file.
 pub type LineAndColumn = (usize, usize);
@@ -16,7 +16,7 @@ pub struct Location {
     /// The span information.
     pub span : Span,
     /// The file this span occurs in.
-    pub file_id : FileID,
+    pub file_id : FileId,
 }
 
 impl Location {
@@ -42,14 +42,14 @@ pub struct File {
     pub path : PathBuf,
     src : String,
     lines : Vec<Span>,
-    file_id : FileID,
+    file_id : FileId,
 }
 
 impl File {
     fn new(
         path : PathBuf,
         src : String,
-        file_id : FileID,
+        file_id : FileId,
     ) -> Self {
         let mut file = Self { path, src, lines : vec![], file_id };
         file.refresh_lines();
@@ -180,7 +180,7 @@ pub struct FileManager {
 
 impl FileManager {
     /// "Opens" a new virtual file and returns its handle.
-    pub fn load_str(&mut self, path : PathBuf, src : String) -> FileID {
+    pub fn load_str(&mut self, path : PathBuf, src : String) -> FileId {
         //let name = path.file_stem().map(OsString::from).unwrap_or("main".into());
         //let ext = path.extension().map(OsString::from);
         //let dir = if path.pop() { Some(path) } else { None };
@@ -191,7 +191,7 @@ impl FileManager {
     }
 
     /// Opens a physical file and returns its handle.
-    pub fn load(&mut self, path : PathBuf) -> error::Result<FileID> {
+    pub fn load(&mut self, path : PathBuf) -> error::Result<FileId> {
         let path = resolve_absolute_path(&path).unwrap_or(path);
         let path = resolve_relative_path(&path).unwrap_or(path);
         let src = match fs::read_to_string(&path) {
@@ -209,17 +209,17 @@ impl FileManager {
         Ok(file_id)
     }
 
-    /// Helper function for getting file information. Since `FileID`s are
+    /// Helper function for getting file information. Since `FileId`s are
     /// only ever created by the compiler, accessing an invalid file will
     /// panic.
-    pub fn get_file_mut(&mut self, file : FileID) -> &mut File {
+    pub fn get_file_mut(&mut self, file : FileId) -> &mut File {
         &mut self.files[file]
     }
 
-    /// Helper function for getting file information. Since `FileID`s are
+    /// Helper function for getting file information. Since `FileId`s are
     /// only ever created by the compiler, accessing an invalid file will
     /// panic.
-    pub fn get_file(&self, file : FileID) -> &File {
+    pub fn get_file(&self, file : FileId) -> &File {
         &self.files[file]
     }
 }

@@ -1,4 +1,4 @@
-use std::cmp;
+use std::{ cmp, path::PathBuf };
 use libcosyc::parse::lex::{ Lexer, Token };
 use libcosyc::Session;
 
@@ -9,7 +9,7 @@ use libcosyc::Session;
 pub(super) struct Args {
     /// Path of the `.cy` file to tokenise.
     #[arg()]
-    file_path : String,
+    file_path : PathBuf,
 }
 
 const HEAD_SPAN : &str = "span";
@@ -19,7 +19,7 @@ const HEAD_SRC : &str = "src";
 const MAX_SRC_LENGTH : usize = 64;
 
 pub(super) fn execute(sess : &mut Session, args : Args) {
-    let file_id = match sess.files.load((&args.file_path).into()) {
+    let file_id = match sess.files.load(args.file_path) {
         Ok(x) => x,
         Err(err) => {
             err.report(&mut sess.issues);

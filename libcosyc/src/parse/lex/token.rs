@@ -33,6 +33,7 @@ pub enum Token {
     Fn,
     Mod,
     Pub,
+    Where,
     // miscellaneous
     Comment,
     LineBreak { implicit : bool },
@@ -68,6 +69,7 @@ impl Token {
             Self::Fn => "`fn`",
             Self::Mod => "`mod`",
             Self::Pub => "`pub`",
+            Self::Where => "`where`",
             Self::Comment => "comment",
             Self::LineBreak { implicit } => if *implicit { "new line" } else { "`;;`" },
             Self::LineContinue => "`...`",
@@ -86,6 +88,7 @@ impl Token {
             "fn" => Self::Fn,
             "mod" => Self::Mod,
             "pub" => Self::Pub,
+            "where" => Self::Where,
             "true" => Self::Bool(true),
             "false" => Self::Bool(false),
             _ => Self::Id,

@@ -65,28 +65,33 @@ impl Default for Visibility {
     fn default() -> Self { Visibility::Internal }
 }
 
-#[derive(Debug)]
-pub struct TopDecl {
-    pub visibility : Visibility,
-    pub decl : Decl,
-}
-
-#[derive(Debug)]
-pub struct SubModule {
-    pub visibility : Visibility,
-    pub module : Module,
-    /// The location of this submodules name in the source code.
-    pub location : Location,
-    /// The name of this submodule.
-    pub name : Symbol,
-}
-
 /// A module associates declarations with a name. Modules are hierarchial, and
 /// can contain submodules.
 #[derive(Debug, Default)]
 pub struct Module {
     /// Submodule definitions.
-    pub submodules : Vec<SubModule>,
+    pub submodules : Vec<(Visibility, ModuleId)>,
     /// Top-level declarations.
-    pub decls : Vec<TopDecl>,
+    pub decls : Vec<(Visibility, Decl)>,
+    /// The name of this module.
+    pub name : Option<(Location, Symbol)>,
+    /// The ID of the parent to this module.
+    pub parent : Option<ModuleId>,
+}
+
+pub type ModuleId = usize;
+
+#[derive(Debug)]
+pub struct Package {
+    /// The name of this package.
+    pub name : String,
+    /// The package root module.
+    pub root : ModuleId,
+    pub modules : Vec<Module>,
+}
+
+impl Package {
+    pub fn new(name : String) -> Self {
+        Self { name, root : 0, modules : vec![Module::default()] }
+    }
 }

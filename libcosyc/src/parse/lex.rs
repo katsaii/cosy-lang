@@ -193,9 +193,9 @@ impl<'a> Cursor<'a> {
     }
 }
 
-fn is_eof(x : char) -> bool { x == '\0' }
-fn is_eol(x : char) -> bool { matches!(x, '\n' | '\r') }
-fn is_whitespace(x : char) -> bool { !is_eol(x) && x.is_whitespace() }
-fn is_alpha(x : char) -> bool { x.is_ascii_alphabetic() }
-fn is_digit(x : char) -> bool { x.is_ascii_digit() }
-fn is_digit_36(x : char) -> bool { is_digit(x) || is_alpha(x) }
+pub(super) fn is_eof(x : char) -> bool { x == '\0' }
+pub(super) fn is_eol(x : char) -> bool { matches!(x, '\n' | '\r') }
+pub(super) fn is_whitespace(x : char) -> bool { !is_eol(x) && x.is_whitespace() }
+pub(super) fn is_alpha(x : char) -> bool { x.is_ascii_alphabetic() }
+pub(super) fn is_digit(x : char) -> bool { x.is_ascii_digit() }
+pub(super) fn is_digit_36(x : char) -> bool { is_digit(x) || is_alpha(x) }

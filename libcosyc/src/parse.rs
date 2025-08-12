@@ -1,6 +1,7 @@
 pub mod ast;
 pub mod lex;
 
+use std::path::PathBuf;
 use lex::Token;
 use crate::source::{ Location, File, FileManager };
 use crate::error::{ IssueManager, Diagnostic };
@@ -75,13 +76,14 @@ impl<'a> Parser<'a> {
             if let Token::Mod = self.lexer.peek() {
                 let span = self.lexer.next().0;
                 let location = self.file.location(&span);
+                let mut submodule = ast::Module::default();
                 Diagnostic::unimplemented()
                     .message("modules")
                     .label(location)
                     .report(self.issues);
             } else if let Some(result) = self.try_parse_decl() {
                 if let Some(decl) = result {
-                    module.decls.push(ast::TopDecl { visibility, decl });
+                    module.decls.push((visibility, decl));
                 } else {
                     self.recover();
                 }
@@ -253,23 +255,41 @@ impl<'a> Parser<'a> {
     }
 }
 
-/// Parses a package into a complete module. Also handles the recursive parsing
+fn open_file<'a>(
+    issues : &mut IssueManager,
+    files : &'a mut FileManager,
+    file_path : PathBuf,
+) -> Option<&'a File> {
+    match files.load(file_path) {
+        Ok(file_id) => Some(files.get_file(file_id)),
+        Err(err) => {
+            err.report(issues);
+            None
+        },
+    }
+}
+
+/// Parses a package from a root module. Also handles the recursive parsing
 /// of submodules.
 ///
 /// Any errors encountered whilst parsing are reported to `issues`.
 pub fn from_file(
     issues : &mut IssueManager,
     files : &mut FileManager,
-    file_path : &str,
-) -> ast::Module {
-    let mut module_root = ast::Module::default();
-    let file = match files.load((file_path).into()) {
-        Ok(file_id) => files.get_file(file_id),
-        Err(err) => {
-            err.report(issues);
-            return module_root;
-        },
-    };
-    Parser::parse(issues, file, &mut module_root);
-    module_root
+    file_path : PathBuf,
+) -> Option<ast::Package> {
+    let file = open_file(issues, files, file_path)?;
+    let name = file.path.file_stem().unwrap().to_string_lossy().to_string();
+    let mut package = ast::Package::new(name);
+    let module_root = &mut package.modules[package.root];
+    Parser::parse(issues, file, module_root);
+    if package.name.chars().any(char::is_whitespace) {
+        Diagnostic::error()
+            .message(("package name {} should not contain whitespace", [
+                package.name.clone().into(),
+            ]))
+            .report(issues);
+        return None;
+    }
+    Some(package)
 }

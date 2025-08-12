@@ -1,19 +1,19 @@
-use libcosyc::parse::{ self as parse, ast, Parser };
-use libcosyc::Session;
+use std::path::PathBuf;
+use libcosyc::{ parse, Session };
 
 /// Parses the contents of a file and prints its untyped AST.
 #[derive(super::Args)]
 pub(super) struct Args {
     /// Path of the `.cy` file to parse.
     #[arg()]
-    file_path : String,
+    file_path : PathBuf,
 }
 
 pub(super) fn execute(sess : &mut Session, args : Args) {
-    let module = parse::from_file(
+    let package = parse::from_file(
         &mut sess.issues,
         &mut sess.files,
-        &args.file_path
+        args.file_path
     );
-    println!("{:#?}", module);
+    println!("{:#?}", package);
 }
