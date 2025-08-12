@@ -1,4 +1,8 @@
---mod my_module
+mod my_module
+
+mod thing where
+    mod test_123
+end
 
 -- simple main function
 

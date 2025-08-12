@@ -21,7 +21,7 @@ impl<'a> Parser<'a> {
         issues : &'a mut IssueManager,
         file : &'a File,
         module : &mut ast::Module,
-    ) -> () {
+    ) {
         let lexer = lex::Lexer::new(file.get_src());
         let mut parser = Self { issues, file, lexer };
         parser.parse_module_body(module);
@@ -66,6 +66,7 @@ impl<'a> Parser<'a> {
         &mut self,
         module : &mut ast::Module,
     ) -> Option<()> {
+        module.initialised = true;
         while !matches!(self.lexer.peek(), Token::End | Token::EoF) {
             let visibility = if let Token::Pub = self.lexer.peek() {
                 self.lexer.next();
@@ -74,13 +75,17 @@ impl<'a> Parser<'a> {
                 ast::Visibility::Internal
             };
             if let Token::Mod = self.lexer.peek() {
-                let span = self.lexer.next().0;
-                let location = self.file.location(&span);
-                let mut submodule = ast::Module::default();
-                Diagnostic::unimplemented()
-                    .message("modules")
-                    .label(location)
-                    .report(self.issues);
+                self.lexer.next();
+                let (location, name) = self.parse_id()?;
+                let mut submodule = ast::Module {
+                    name, location : Some(location), ..ast::Module::default()
+                };
+                if let Token::Where = self.lexer.peek() {
+                    self.lexer.next();
+                    self.parse_module_body(&mut submodule);
+                    self.assert_token(Token::End);
+                }
+                module.submodules.push((visibility, submodule));
             } else if let Some(result) = self.try_parse_decl() {
                 if let Some(decl) = result {
                     module.decls.push((visibility, decl));
@@ -259,11 +264,18 @@ fn open_file<'a>(
     issues : &mut IssueManager,
     files : &'a mut FileManager,
     file_path : PathBuf,
+    location : Option<Location>,
 ) -> Option<&'a File> {
     match files.load(file_path) {
         Ok(file_id) => Some(files.get_file(file_id)),
         Err(err) => {
-            err.report(issues);
+            let mut diag = Diagnostic::from(err);
+            if let Some(location) = location {
+                diag = diag.label((location, [
+                    "module defined here".into()
+                ]));
+            }
+            diag.report(issues);
             None
         },
     }
@@ -277,19 +289,44 @@ pub fn from_file(
     issues : &mut IssueManager,
     files : &mut FileManager,
     file_path : PathBuf,
-) -> Option<ast::Package> {
-    let file = open_file(issues, files, file_path)?;
+) -> Option<ast::Module> {
+    let file = open_file(issues, files, file_path, None)?;
     let name = file.path.file_stem().unwrap().to_string_lossy().to_string();
-    let mut package = ast::Package::new(name);
-    let module_root = &mut package.modules[package.root];
-    Parser::parse(issues, file, module_root);
-    if package.name.chars().any(char::is_whitespace) {
+    if name.chars().any(char::is_whitespace) {
         Diagnostic::error()
-            .message(("package name {} should not contain whitespace", [
-                package.name.clone().into(),
+            .message(("package name '{}' should not contain whitespace", [
+                name.clone().into(),
             ]))
             .report(issues);
-        return None;
     }
-    Some(package)
+    let mut module = ast::Module { name, ..ast::Module::default() };
+    let mut module_root_dir = file.path.parent().unwrap().to_path_buf();
+    Parser::parse(issues, file, &mut module);
+    from_file_submodules(issues, files, &mut module, &mut module_root_dir);
+    Some(module)
+}
+
+fn from_file_submodules(
+    issues : &mut IssueManager,
+    files : &mut FileManager,
+    module : &mut ast::Module,
+    module_root_dir : &mut PathBuf,
+) -> Option<()> {
+    module_root_dir.push(&module.name);
+    for (_, submodule) in module.submodules.iter_mut() {
+        if !submodule.initialised {
+            let mut file_path = module_root_dir.clone();
+            file_path.push(&submodule.name);
+            file_path.set_extension("cy");
+            let file = if let Some(x) = open_file(
+                issues, files, file_path, submodule.location
+            ) { x } else {
+                continue;
+            };
+            Parser::parse(issues, file, submodule);
+        }
+        from_file_submodules(issues, files, submodule, module_root_dir);
+    }
+    module_root_dir.pop();
+    Some(())
 }

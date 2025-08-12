@@ -70,28 +70,12 @@ impl Default for Visibility {
 #[derive(Debug, Default)]
 pub struct Module {
     /// Submodule definitions.
-    pub submodules : Vec<(Visibility, ModuleId)>,
+    pub submodules : Vec<(Visibility, Module)>,
     /// Top-level declarations.
     pub decls : Vec<(Visibility, Decl)>,
     /// The name of this module.
-    pub name : Option<(Location, Symbol)>,
-    /// The ID of the parent to this module.
-    pub parent : Option<ModuleId>,
-}
-
-pub type ModuleId = usize;
-
-#[derive(Debug)]
-pub struct Package {
-    /// The name of this package.
-    pub name : String,
-    /// The package root module.
-    pub root : ModuleId,
-    pub modules : Vec<Module>,
-}
-
-impl Package {
-    pub fn new(name : String) -> Self {
-        Self { name, root : 0, modules : vec![Module::default()] }
-    }
+    pub name : Symbol,
+    /// The location of this module definition, if one exists.
+    pub location : Option<Location>,
+    pub(super) initialised : bool,
 }
