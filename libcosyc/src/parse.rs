@@ -20,13 +20,13 @@ impl<'a> Parser<'a> {
     pub fn parse(
         issues : &'a mut IssueManager,
         file : &'a File,
-        module : &mut ast::Module,
+        //module : &mut ast::Node,
     ) {
         let lexer = lex::Lexer::new(file.get_src());
         let mut parser = Self { issues, file, lexer };
-        parser.parse_module_body(module);
+        //parser.parse_module_body(module);
     }
-
+/*
     fn recover(&mut self) {
         while
             !matches!(self.lexer.peek(),
@@ -258,6 +258,7 @@ impl<'a> Parser<'a> {
         };
         Some((location, self.lexer.slice(&span).to_string()))
     }
+*/
 }
 
 fn open_file<'a>(
@@ -266,6 +267,7 @@ fn open_file<'a>(
     file_path : PathBuf,
     location : Option<Location>,
 ) -> Option<&'a File> {
+/*
     match files.load(file_path) {
         Ok(file_id) => Some(files.get_file(file_id)),
         Err(err) => {
@@ -279,6 +281,8 @@ fn open_file<'a>(
             None
         },
     }
+*/
+    None
 }
 
 /// Parses a package from a root module. Also handles the recursive parsing
@@ -289,7 +293,8 @@ pub fn from_file(
     issues : &mut IssueManager,
     files : &mut FileManager,
     file_path : PathBuf,
-) -> Option<ast::Module> {
+) -> Option<ast::Node> {
+/*
     let file = open_file(issues, files, file_path, None)?;
     let name = file.path.file_stem().unwrap().to_string_lossy().to_string();
     if name.chars().any(char::is_whitespace) {
@@ -304,8 +309,11 @@ pub fn from_file(
     Parser::parse(issues, file, &mut module);
     from_file_submodules(issues, files, &mut module, &mut module_root_dir);
     Some(module)
+*/
+    None
 }
 
+/*
 fn from_file_submodules(
     issues : &mut IssueManager,
     files : &mut FileManager,
@@ -330,3 +338,4 @@ fn from_file_submodules(
     module_root_dir.pop();
     Some(())
 }
+*/
