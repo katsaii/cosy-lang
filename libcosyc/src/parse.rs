@@ -3,7 +3,7 @@ pub mod lex;
 
 use std::path::PathBuf;
 use lex::Token;
-use crate::source::{ Location, File, FileManager };
+use crate::source::{ Span, Location, File, FileManager };
 use crate::error::{ IssueManager, Diagnostic };
 
 /// Parses the contents of a Cosy source file into untyped AST.
@@ -20,13 +20,16 @@ impl<'a> Parser<'a> {
     pub fn parse(
         issues : &'a mut IssueManager,
         file : &'a File,
-        //module : &mut ast::Node,
-    ) {
+    ) -> ast::Node {
         let lexer = lex::Lexer::new(file.get_src());
         let mut parser = Self { issues, file, lexer };
-        //parser.parse_module_body(module);
+        parser.parse_module_body()
     }
-/*
+
+    fn make_dbg<T>(&self, span : &Span, value : T) -> ast::SourceRef<T> {
+        ast::SourceRef { value, loc : self.file.location(span) }
+    }
+
     fn recover(&mut self) {
         while
             !matches!(self.lexer.peek(),
@@ -61,6 +64,38 @@ impl<'a> Parser<'a> {
             .report(self.issues);
         None
     }
+
+    fn parse_module_body(&mut self) -> ast::Node {
+        let mut decls = Vec::new();
+        let span_start = self.lexer.peek_span().clone();
+        while !matches!(self.lexer.peek(), Token::End | Token::EoF) {
+            let visibility = if let Token::Pub = self.lexer.peek() {
+                self.lexer.next();
+                ast::Visibility::Public
+            } else {
+                ast::Visibility::Internal
+            };
+            let decl = if let Some(result) = self.try_parse_decl() {
+                if let Some(decl) = result {
+                    decl
+                } else {
+                    self.recover();
+                    continue;
+                }
+            } else {
+                self.assert("unexpected symbol in declaration scope");
+                continue;
+            };
+
+        }
+        let span = span_start.join(self.lexer.peek_span());
+        ast::Node::Block(self.make_dbg(&span, decls))
+    }
+
+    fn try_parse_decl(&mut self) -> Option<Option<ast::Node>> {
+        None
+    }
+/*
 
     fn parse_module_body(
         &mut self,
@@ -265,15 +300,14 @@ fn open_file<'a>(
     issues : &mut IssueManager,
     files : &'a mut FileManager,
     file_path : PathBuf,
-    location : Option<Location>,
+    loc : Option<Location>,
 ) -> Option<&'a File> {
-/*
     match files.load(file_path) {
         Ok(file_id) => Some(files.get_file(file_id)),
         Err(err) => {
             let mut diag = Diagnostic::from(err);
-            if let Some(location) = location {
-                diag = diag.label((location, [
+            if let Some(loc) = loc {
+                diag = diag.label((loc, [
                     "module defined here".into()
                 ]));
             }
@@ -281,36 +315,23 @@ fn open_file<'a>(
             None
         },
     }
-*/
-    None
 }
 
 /// Parses a package from a root module. Also handles the recursive parsing
 /// of submodules.
 ///
 /// Any errors encountered whilst parsing are reported to `issues`.
-pub fn from_file(
+pub fn package_from_file(
     issues : &mut IssueManager,
     files : &mut FileManager,
     file_path : PathBuf,
-) -> Option<ast::Node> {
-/*
+) -> Option<ast::Package> {
     let file = open_file(issues, files, file_path, None)?;
     let name = file.path.file_stem().unwrap().to_string_lossy().to_string();
-    if name.chars().any(char::is_whitespace) {
-        Diagnostic::error()
-            .message(("package name '{}' should not contain whitespace", [
-                name.clone().into(),
-            ]))
-            .report(issues);
-    }
-    let mut module = ast::Module { name, ..ast::Module::default() };
-    let mut module_root_dir = file.path.parent().unwrap().to_path_buf();
-    Parser::parse(issues, file, &mut module);
-    from_file_submodules(issues, files, &mut module, &mut module_root_dir);
-    Some(module)
-*/
-    None
+    let mut root_dir = file.path.parent().unwrap().to_path_buf();
+    let root = Parser::parse(issues, file);
+    //from_file_submodules(issues, files, &mut module, &mut module_root_dir);
+    Some(ast::Package { name, root })
 }
 
 /*

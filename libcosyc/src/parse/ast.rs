@@ -1,3 +1,4 @@
+use std::fmt;
 use crate::source::{ Symbol, Location };
 
 /// Declaration visibility level.
@@ -12,45 +13,46 @@ pub enum Visibility {
 /// Although it's possible to construct them, any malformed ASTs will raise an
 /// error during the AST -> HIR lowering step.
 #[derive(Debug)]
-pub enum NodeKind {
+pub enum Node {
     // expressions
-    NumIntegral(u128),
-    NumRational(Symbol),
-    Bool(bool),
-    Id(Symbol),
-    Block(Vec<Node>),
-    Parens(Box<Node>),
+    NumIntegral(SourceRef<u128>),
+    NumRational(SourceRef<Symbol>),
+    Bool(SourceRef<bool>),
+    Id(SourceRef<Symbol>),
+    Block(SourceRef<Vec<Node>>),
+    Parens(SourceRef<Box<Node>>),
     // statments
     Local {
-        name : Symbol,
+        name : SourceRef<Symbol>,
         init : Option<Box<Node>>,
     },
     // declarations
     Fn {
-        name : Symbol,
-        body : Box<Node>,
-    },
-    Mod {
-        name : Symbol,
+        name : SourceRef<Symbol>,
         body : Box<Node>,
     },
     // misc
     Scope {
-        vis : Visibility,
+        vis : SourceRef<Visibility>,
         node : Box<Node>,
+    },
+}
+
+/// Pairs a value with its location the source code.
+pub struct SourceRef<T> {
+    pub value : T,
+    pub loc : Location,
+}
+
+impl<T : fmt::Debug> fmt::Debug for SourceRef<T> {
+    fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
+        self.value.fmt(out)
     }
 }
 
+/// Stores information about a package, such as is name and modules.
 #[derive(Debug)]
-pub struct Node {
-    pub kind : NodeKind,
-    /// The span of this expression in the source code.
-    pub location : Location,
-}
-
 pub struct Package {
-    /// The name of this package, usually the name of the file that contains the
-    /// root module.
     pub name : Symbol,
     pub root : Node,
 }

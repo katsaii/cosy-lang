@@ -43,3 +43,8 @@ Diagnostic::report(
     Diagnostic::label(
         Diagnostic::message(
             Diagnostic::fatal(), "hi"), location), self.issues)
+
+do
+    local n = #[try] get_res()
+    n + 2
+end

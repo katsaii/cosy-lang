@@ -154,7 +154,7 @@ impl<'a> Cursor<'a> {
                 Token::from_lexeme(&self.src[offset_start..self.peek_1.0])
             },
             '`' => {
-                self.next_while(|x| !(x == '`' || is_eol(x) || is_whitespace(x)));
+                self.next_while(|x| !(x == '`' || is_eol(x)));
                 let unclosed = self.peek_1.1 != '`';
                 Token::IdRaw { unclosed }
             },

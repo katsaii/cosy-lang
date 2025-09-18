@@ -10,11 +10,11 @@ pub(super) struct Args {
 }
 
 pub(super) fn execute(sess : &mut Session, args : Args) {
-    if let Some(package) = parse::from_file(
+    if let Some(ast) = parse::package_from_file(
         &mut sess.issues,
         &mut sess.files,
-        args.file_path
+        args.file_path,
     ) {
-        println!("{:#?}", package);
+        println!("{:#?}", ast);
     }
 }
