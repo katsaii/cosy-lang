@@ -49,10 +49,3 @@ impl<T : fmt::Debug> fmt::Debug for SourceRef<T> {
         self.value.fmt(out)
     }
 }
-
-/// Stores information about a package, such as is name and modules.
-#[derive(Debug)]
-pub struct Package {
-    pub name : Symbol,
-    pub root : Node,
-}

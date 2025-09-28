@@ -3,7 +3,7 @@ pub mod lex;
 
 use std::path::PathBuf;
 use lex::Token;
-use crate::source::{ Span, Location, File, FileManager };
+use crate::source::{ Symbol, Span, Location, File, FileManager };
 use crate::error::{ IssueManager, Diagnostic };
 
 /// Parses the contents of a Cosy source file into untyped AST.
@@ -27,7 +27,11 @@ impl<'a> Parser<'a> {
     }
 
     fn make_dbg<T>(&self, span : &Span, value : T) -> ast::SourceRef<T> {
-        ast::SourceRef { value, loc : self.file.location(span) }
+        ast::SourceRef { value, loc : self.make_loc(span) }
+    }
+
+    fn make_loc(&self, span : &Span) -> Location {
+        self.file.location(span)
     }
 
     fn recover(&mut self) {
@@ -69,12 +73,6 @@ impl<'a> Parser<'a> {
         let mut decls = Vec::new();
         let span_start = self.lexer.peek_span().clone();
         while !matches!(self.lexer.peek(), Token::End | Token::EoF) {
-            let visibility = if let Token::Pub = self.lexer.peek() {
-                self.lexer.next();
-                ast::Visibility::Public
-            } else {
-                ast::Visibility::Internal
-            };
             let decl = if let Some(result) = self.try_parse_decl() {
                 if let Some(decl) = result {
                     decl
@@ -86,109 +84,53 @@ impl<'a> Parser<'a> {
                 self.assert("unexpected symbol in declaration scope");
                 continue;
             };
-
+            decls.push(decl);
         }
         let span = span_start.join(self.lexer.peek_span());
         ast::Node::Block(self.make_dbg(&span, decls))
     }
 
     fn try_parse_decl(&mut self) -> Option<Option<ast::Node>> {
-        None
-    }
-/*
-
-    fn parse_module_body(
-        &mut self,
-        module : &mut ast::Module,
-    ) -> Option<()> {
-        module.initialised = true;
-        while !matches!(self.lexer.peek(), Token::End | Token::EoF) {
-            let visibility = if let Token::Pub = self.lexer.peek() {
-                self.lexer.next();
-                ast::Visibility::Public
-            } else {
-                ast::Visibility::Internal
-            };
-            if let Token::Mod = self.lexer.peek() {
-                self.lexer.next();
-                let (location, name) = self.parse_id()?;
-                let mut submodule = ast::Module {
-                    name, location : Some(location), ..ast::Module::default()
-                };
-                if let Token::Where = self.lexer.peek() {
-                    self.lexer.next();
-                    self.parse_module_body(&mut submodule);
-                    self.assert_token(Token::End);
-                }
-                module.submodules.push((visibility, submodule));
-            } else if let Some(result) = self.try_parse_decl() {
-                if let Some(decl) = result {
-                    module.decls.push((visibility, decl));
-                } else {
-                    self.recover();
-                }
-            } else {
-                self.assert("unexpected symbol in declaration scope");
-            }
-        }
-        Some(())
-    }
-
-    fn try_parse_decl(&mut self) -> Option<Option<ast::Decl>> {
         let node = if let Token::Fn = self.lexer.peek() {
             self.lexer.next();
             // get function signature
-            let (location, name) = self.parse_id()?;
+            let name = self.parse_id()?;
             self.assert_token(Token::LParen)?;
             self.assert_token(Token::RParen)?;
             // get function body
             self.assert_token(Token::Do)?;
-            let body = self.parse_expr_block()?;
+            let body = Box::new(self.parse_expr_block()?);
             self.assert_token(Token::End)?;
-            Some(ast::Decl {
-                location,
-                kind : ast::DeclKind::Fn { name, body }
-            })
+            Some(ast::Node::Fn { name, body })
         } else {
             return None;
         };
         Some(node)
     }
 
-    fn parse_stmt(&mut self) -> Option<ast::Stmt> {
+    fn parse_stmt(&mut self) -> Option<ast::Node> {
         if let Some(decl) = self.try_parse_decl() {
-            let decl = decl?;
-            Some(ast::Stmt {
-                location : decl.location,
-                kind : ast::StmtKind::Decl(decl),
-            })
+            decl
         } else if let Token::Local = self.lexer.peek() {
             self.lexer.next();
-            let (location, name) = self.parse_id()?;
+            let name = self.parse_id()?;
             let init = if let Token::Equal = self.lexer.peek() {
                 self.lexer.next();
-                Some(self.parse_expr()?)
+                Some(Box::new(self.parse_expr()?))
             } else {
                 None
             };
-            Some(ast::Stmt {
-                location,
-                kind : ast::StmtKind::LocalVar { name, init }
-            })
+            Some(ast::Node::Local { name, init })
         } else {
-            let expr = self.parse_expr()?;
-            Some(ast::Stmt {
-                location : expr.location,
-                kind : ast::StmtKind::Expr(expr),
-            })
+            self.parse_expr()
         }
     }
 
-    fn parse_expr(&mut self) -> Option<ast::Expr> {
+    fn parse_expr(&mut self) -> Option<ast::Node> {
         self.parse_expr_stmt()
     }
 
-    fn parse_expr_stmt(&mut self) -> Option<ast::Expr> {
+    fn parse_expr_stmt(&mut self) -> Option<ast::Node> {
         if let Token::Do = self.lexer.peek() {
             self.lexer.next();
             let expr = self.parse_expr_block()?;
@@ -199,7 +141,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_expr_block(&mut self) -> Option<ast::Expr> {
+    fn parse_expr_block(&mut self) -> Option<ast::Node> {
         let span_start = self.lexer.peek_span().clone();
         let mut stmts = Vec::new();
         while
@@ -215,105 +157,63 @@ impl<'a> Parser<'a> {
             }
         }
         let span = span_start.join(self.lexer.peek_span());
-        let location = self.file.location(&span);
-        Some(ast::Expr {
-            location,
-            kind : ast::ExprKind::Block(stmts),
-        })
+        Some(ast::Node::Block(self.make_dbg(&span, stmts)))
     }
 
-    fn parse_expr_terminal(&mut self) -> Option<ast::Expr> {
+    fn parse_expr_terminal(&mut self) -> Option<ast::Node> {
         if let Token::NumIntegral = self.lexer.peek() {
             let (span, _) = self.lexer.next();
-            let location = self.file.location(&span);
             let n_string = span.slice(self.file.get_src()).replace("_", "");
             match n_string.parse::<u128>() {
-                Ok(n) => Some(ast::Expr {
-                    location,
-                    kind : ast::ExprKind::NumIntegral(n),
-                }),
+                Ok(n) => Some(ast::Node::NumIntegral(self.make_dbg(&span, n))),
                 Err(err) => {
                     Diagnostic::error()
                         .message(("{}", [err.into()]))
-                        .label(location)
+                        .label(self.file.location(&span))
                         .report(self.issues);
                     None
                 }
             }
         } else if let Token::NumRational = self.lexer.peek() {
             let (span, _) = self.lexer.next();
-            let location = self.file.location(&span);
             let n_string = span.slice(self.file.get_src()).replace("_", "");
-            Some(ast::Expr {
-                location,
-                kind : ast::ExprKind::NumRational(n_string),
-            })
+            Some(ast::Node::NumRational(self.make_dbg(&span, n_string)))
         } else if let Token::Bool(b) = self.lexer.peek() {
             let b = *b;
             let (span, _) = self.lexer.next();
-            let location = self.file.location(&span);
-            Some(ast::Expr {
-                location,
-                kind : ast::ExprKind::Bool(b),
-            })
+            Some(ast::Node::Bool(self.make_dbg(&span, b)))
         } else if let Token::LParen = self.lexer.peek() {
             let (span_start, _) = self.lexer.next();
             let expr = self.parse_expr()?;
             let (span_end, _) = self.assert_token(Token::RParen)?;
-            let location = self.file.location(&span_start.join(&span_end));
-            Some(ast::Expr {
-                location,
-                kind : ast::ExprKind::Parens(Box::new(expr)),
-            })
+            let span = span_start.join(&span_end);
+            Some(ast::Node::Parens(self.make_dbg(&span, Box::new(expr))))
         } else {
-            let (location, name) = self.parse_id()?;
-            Some(ast::Expr {
-                location,
-                kind : ast::ExprKind::Id(name),
-            })
+            let name = self.parse_id()?;
+            Some(ast::Node::Id(name))
         }
     }
 
-    fn parse_id(&mut self) -> Option<(Location, String)> {
-        let location = self.file.location(&self.lexer.peek_span());
-        let span = if let Token::IdRaw { unclosed } = self.lexer.peek() {
+    fn parse_id(&mut self) -> Option<ast::SourceRef<Symbol>> {
+        let srcloc = if let Token::IdRaw { unclosed } = self.lexer.peek() {
             let unclosed = *unclosed;
             let (span, _) = self.lexer.next();
-            if unclosed {
+            let span_inner = if unclosed {
+                let location = 
                 Diagnostic::error()
                     .message("unclosed raw identifier")
-                    .label((location, ["expected a closing '`' here".into()]))
+                    .label((self.make_loc(&span), ["expected a closing '`' here".into()]))
                     .report(self.issues);
                 span.shrink(1, 0)
             } else {
                 span.shrink(1, 1)
-            }
+            };
+            self.make_dbg(&span, self.lexer.slice(&span_inner).to_string())
         } else {
-            self.assert_token(Token::Id)?.0
+            let span = self.assert_token(Token::Id)?.0;
+            self.make_dbg(&span, self.lexer.slice(&span).to_string())
         };
-        Some((location, self.lexer.slice(&span).to_string()))
-    }
-*/
-}
-
-fn open_file<'a>(
-    issues : &mut IssueManager,
-    files : &'a mut FileManager,
-    file_path : PathBuf,
-    loc : Option<Location>,
-) -> Option<&'a File> {
-    match files.load(file_path) {
-        Ok(file_id) => Some(files.get_file(file_id)),
-        Err(err) => {
-            let mut diag = Diagnostic::from(err);
-            if let Some(loc) = loc {
-                diag = diag.label((loc, [
-                    "module defined here".into()
-                ]));
-            }
-            diag.report(issues);
-            None
-        },
+        Some(srcloc)
     }
 }
 
@@ -325,38 +225,18 @@ pub fn package_from_file(
     issues : &mut IssueManager,
     files : &mut FileManager,
     file_path : PathBuf,
-) -> Option<ast::Package> {
-    let file = open_file(issues, files, file_path, None)?;
+) -> Option<(Symbol, ast::Node)> {
+    let file = match files.load(file_path) {
+        Ok(file_id) => files.get_file(file_id),
+        Err(err) => {
+            let diag = Diagnostic::from(err);
+            diag.report(issues);
+            return None;
+        },
+    };
     let name = file.path.file_stem().unwrap().to_string_lossy().to_string();
-    let mut root_dir = file.path.parent().unwrap().to_path_buf();
-    let root = Parser::parse(issues, file);
-    //from_file_submodules(issues, files, &mut module, &mut module_root_dir);
-    Some(ast::Package { name, root })
+    let mut module_dir = file.path.parent().unwrap().to_path_buf();
+    let module = Parser::parse(issues, file);
+    // TODO :: multiple-files/incremental compilation
+    Some((name, module))
 }
-
-/*
-fn from_file_submodules(
-    issues : &mut IssueManager,
-    files : &mut FileManager,
-    module : &mut ast::Module,
-    module_root_dir : &mut PathBuf,
-) -> Option<()> {
-    module_root_dir.push(&module.name);
-    for (_, submodule) in module.submodules.iter_mut() {
-        if !submodule.initialised {
-            let mut file_path = module_root_dir.clone();
-            file_path.push(&submodule.name);
-            file_path.set_extension("cy");
-            let file = if let Some(x) = open_file(
-                issues, files, file_path, submodule.location
-            ) { x } else {
-                continue;
-            };
-            Parser::parse(issues, file, submodule);
-        }
-        from_file_submodules(issues, files, submodule, module_root_dir);
-    }
-    module_root_dir.pop();
-    Some(())
-}
-*/
