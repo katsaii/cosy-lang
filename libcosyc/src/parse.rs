@@ -1,23 +1,21 @@
+///! Parses the contents of a Cosy source file into untyped AST.
+
 pub mod ast;
 pub mod lex;
 
 use std::path::PathBuf;
 use lex::Token;
-use crate::source::{ Symbol, Span, Location, File, FileManager };
+use crate::source::{ Symbol, Span, Location, SourceRef, File, FileManager };
 use crate::error::{ IssueManager, Diagnostic };
 
-/// Parses the contents of a Cosy source file into untyped AST.
-pub struct Parser<'a> {
+struct Parser<'a> {
     issues : &'a mut IssueManager,
     file : &'a File,
     lexer : lex::Lexer<'a>,
 }
 
 impl<'a> Parser<'a> {
-    /// Parses a file, into the given module.
-    ///
-    /// Any errors encountered whilst parsing are reported to `issues`.
-    pub fn parse(
+    fn parse(
         issues : &'a mut IssueManager,
         file : &'a File,
     ) -> ast::Node {
@@ -26,8 +24,8 @@ impl<'a> Parser<'a> {
         parser.parse_module_body()
     }
 
-    fn make_dbg<T>(&self, span : &Span, value : T) -> ast::SourceRef<T> {
-        ast::SourceRef { value, loc : self.make_loc(span) }
+    fn make_dbg<T>(&self, span : &Span, value : T) -> SourceRef<T> {
+        SourceRef { value, loc : self.make_loc(span) }
     }
 
     fn make_loc(&self, span : &Span) -> Location {
@@ -194,7 +192,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_id(&mut self) -> Option<ast::SourceRef<Symbol>> {
+    fn parse_id(&mut self) -> Option<SourceRef<Symbol>> {
         let srcloc = if let Token::IdRaw { unclosed } = self.lexer.peek() {
             let unclosed = *unclosed;
             let (span, _) = self.lexer.next();

@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::source::{ Symbol, Location };
+use crate::source::{ Symbol, Location, SourceRef };
 
 /// Declaration visibility level.
 #[derive(Debug)]
@@ -36,16 +36,4 @@ pub enum Node {
         vis : SourceRef<Visibility>,
         node : Box<Node>,
     },
-}
-
-/// Pairs a value with its location the source code.
-pub struct SourceRef<T> {
-    pub value : T,
-    pub loc : Location,
-}
-
-impl<T : fmt::Debug> fmt::Debug for SourceRef<T> {
-    fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
-        self.value.fmt(out)
-    }
 }

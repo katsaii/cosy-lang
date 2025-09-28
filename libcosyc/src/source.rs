@@ -36,6 +36,18 @@ impl fmt::Debug for Location {
     }
 }
 
+/// Pairs a value with its location the source code.
+pub struct SourceRef<T> {
+    pub value : T,
+    pub loc : Location,
+}
+
+impl<T : fmt::Debug> fmt::Debug for SourceRef<T> {
+    fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
+        self.value.fmt(out)
+    }
+}
+
 /// Information about a source file.
 pub struct File {
     /// The path of this file, including the directory, file name, and extension.
