@@ -3,8 +3,8 @@
 
 pub use crate::parse::ast::Visibility;
 
-use crate::parse::ast;
-use crate::source::{ Symbol, Location, SourceRef };
+//use crate::parse::ast;
+use crate::source::{ Symbol, SourceRef };
 
 /// HIR packages erase the concept of multiple-files, collapsing them into a
 /// single translation unit.

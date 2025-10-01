@@ -1,8 +1,9 @@
-use std::fmt;
-use crate::source::{ Symbol, Location, SourceRef };
+use bincode::{ Encode, Decode };
+
+use crate::source::{ Symbol, SourceRef };
 
 /// Declaration visibility level.
-#[derive(Debug)]
+#[derive(Debug, Encode, Decode)]
 pub enum Visibility {
     Public,
     Internal,
@@ -12,7 +13,7 @@ pub enum Visibility {
 ///
 /// Although it's possible to construct them, any malformed ASTs will raise an
 /// error during the AST -> HIR lowering step.
-#[derive(Debug)]
+#[derive(Debug, Encode, Decode)]
 pub enum Node {
     // expressions
     NumIntegral(SourceRef<u128>),

@@ -2,6 +2,8 @@ use std::{ env, fs, cmp, fmt, ops, mem };
 use std::path::{ Path, PathBuf };
 use path_clean::PathClean;
 use pathdiff::diff_paths;
+use bincode::{ Encode, Decode };
+
 use crate::error;
 
 /// A simple handle to a file managed by the compiler.
@@ -11,7 +13,7 @@ pub type FileId = usize;
 pub type LineAndColumn = (usize, usize);
 
 /// Represents a span of bytes within a source file.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode)]
 pub struct Location {
     /// The span information.
     pub span : Span,
@@ -37,6 +39,7 @@ impl fmt::Debug for Location {
 }
 
 /// Pairs a value with its location the source code.
+#[derive(Encode, Decode)]
 pub struct SourceRef<T> {
     pub value : T,
     pub loc : Location,
@@ -237,7 +240,7 @@ impl FileManager {
 }
 
 /// Represents a span of bytes within a file.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode)]
 pub struct Span {
     /// The starting byte of the span (inclusive).
     pub start : usize,

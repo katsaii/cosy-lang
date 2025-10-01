@@ -1,4 +1,4 @@
-use crate::parse::ast;
+//use crate::parse::ast;
 use crate::error::{ IssueManager, Diagnostic };
 
 struct ASTLowerCtx<'a> {
@@ -6,7 +6,7 @@ struct ASTLowerCtx<'a> {
 }
 
 impl<'a> ASTLowerCtx<'a> {
-
+    //fn lower_module() -> 
 }
 
 /// Lower the AST into HIR, adding simple type information.

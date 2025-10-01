@@ -197,7 +197,6 @@ impl<'a> Parser<'a> {
             let unclosed = *unclosed;
             let (span, _) = self.lexer.next();
             let span_inner = if unclosed {
-                let location = 
                 Diagnostic::error()
                     .message("unclosed raw identifier")
                     .label((self.make_loc(&span), ["expected a closing '`' here".into()]))
@@ -233,7 +232,7 @@ pub fn package_from_file(
         },
     };
     let name = file.path.file_stem().unwrap().to_string_lossy().to_string();
-    let mut module_dir = file.path.parent().unwrap().to_path_buf();
+    //let module_dir = file.path.parent().unwrap().to_path_buf();
     let module = Parser::parse(issues, file);
     // TODO :: multiple-files/incremental compilation
     Some((name, module))
