@@ -1,4 +1,5 @@
 pub mod source;
+pub mod vfs;
 pub mod error;
 pub mod parse;
 pub mod typing;
