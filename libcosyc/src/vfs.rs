@@ -1,7 +1,8 @@
 use bincode::{ Encode, Decode };
 use std::path::PathBuf;
 use std::hash::{ DefaultHasher, Hash, Hasher };
-use std::{ io, fs };
+use std::collections::HashMap;
+use std::{ io, fs, fmt, ops, cmp };
 
 /// A simple handle to a file managed by the compiler.
 pub type FileId = usize;
@@ -15,64 +16,225 @@ fn hash_str(s : &str) -> (u64, usize) {
     (hash, s.len())
 }
 
-pub enum CacheResult {
-    Changed(String),
-    Unchanged,
-    Deleted,
+fn get_lines(lines : &mut Vec<Span>, src : &str) {
+    lines.clear();
+    let mut chars = src.char_indices().peekable();
+    let mut start = 0;
+    while let Some((end, next)) = chars.next() {
+        if !matches!(next, '\r' | '\n') {
+            continue;
+        }
+        if matches!(next, '\r') &&
+                matches!(chars.peek(), Some((_, '\n'))) {
+            // ignore CRLF
+            chars.next();
+        }
+        lines.push(Span::new(start..end));
+        start = if let Some((i, _)) = chars.peek() {
+            *i
+        } else {
+            src.len()
+        };
+    }
+    lines.push(Span::new(start..src.len()));
+    lines.shrink_to_fit();
 }
 
 /// Maps from `FileId` to file metadata.
 #[derive(Debug, Default, Encode, Decode)]
-pub struct Manifest(Vec<Option<FileMeta>>);
-
-#[derive(Debug, Encode, Decode)]
-struct FileMeta {
-    path : PathBuf,
-    hash : u64,
-    size : usize,
+pub struct Manifest {
+    id_2_meta : HashMap<FileId, FileMeta>,
+    path_2_id : HashMap<PathBuf, FileId>,
+    next_id : usize,
 }
 
 impl Manifest {
-    /// Gets a reference to the `FileMeta` for this `FileId`, or `None` if
-    /// one doesn't exist.
+    /// Returns metadata about the file with the given ID.
     pub fn get(&self, file_id : FileId) -> Option<&FileMeta> {
-        self.0.get(file_id).and_then(|x| x.as_ref())
+        self.id_2_meta.get(&file_id)
     }
 
-    /// Opens a file at the given path, registers it to the file manifest, and
-    /// then returns its ID along with the file contents.
-    pub fn add(&mut self, path : PathBuf) -> io::Result<(FileId, String)> {
-        let file_src = fs::read_to_string(&path)?;
+    /// Loads a file with the given path; returning its ID, its content, and
+    /// whether the file has been modified.
+    pub fn load(&mut self, path : PathBuf) -> io::Result<FileData> {
+        let file_src = match fs::read_to_string(&path) {
+            Ok(ok) => ok,
+            Err(err) => {
+                // delete the cache
+                if let Some(file_id) = self.path_2_id.get(&path) {
+                    self.id_2_meta.remove(file_id);
+                    self.path_2_id.remove(&path);
+                }
+                return Err(err);
+            }
+        };
         let (hash, size) = hash_str(&file_src);
-        let file_meta = Some(FileMeta { path, hash, size });
-        let file_id;
-        if let Some(pos) = self.0.iter().position(|x| x.is_none()) {
-            file_id = pos;
-            self.0[pos] = file_meta;
+        let (file_id, modified) = if let Some(file_id) = self.path_2_id.get(&path) {
+            let file_id = *file_id;
+            // file already exists, check the cache
+            let file_meta = self.id_2_meta.get(&file_id).unwrap();
+            (file_id, file_meta.hash != hash || file_meta.size != size)
         } else {
-            file_id = self.0.len();
-            self.0.push(file_meta);
+            // file doesn't exist, add it
+            let file_id = self.next_id;
+            self.path_2_id.insert(path.clone(), file_id);
+            self.next_id += 1;
+            let file_meta = FileMeta { path, lines : vec![], hash, size };
+            self.id_2_meta.insert(file_id, file_meta);
+            (file_id, true)
+        };
+        if modified {
+            let file_meta = self.id_2_meta.get_mut(&file_id).unwrap();
+            get_lines(&mut file_meta.lines, &file_src);
         }
-        Ok((file_id, file_src))
+        Ok(FileData { id : file_id, src : file_src, modified })
+    }
+}
+
+#[derive(Debug, Encode, Decode)]
+pub struct FileMeta {
+    pub path : PathBuf,
+    pub lines : Vec<Span>,
+    pub hash : u64,
+    pub size : usize,
+}
+
+/// The row and column numbers of a source file.
+pub type LineAndColumn = (usize, usize);
+
+impl FileMeta {
+    /// Searches the lines vector for a span that encloses a specific location.
+    pub fn find_line(&self, pos : usize) -> usize {
+        use cmp::Ordering as ord;
+        let comparator = |x : &Span| match x {
+            x if x.start > pos => ord::Greater,
+            x if x.end < pos => ord::Less,
+            _ => ord::Equal,
+        };
+        match self.lines.binary_search_by(comparator) {
+            Ok(x) => x + 1,
+            Err(x) => if x < 1 { 1 } else { x }
+        }
     }
 
-    /// Checks whether the contents of a file have changed.
-    pub fn check_changed(
-        &mut self,
-        file_id : FileId
-    ) -> io::Result<CacheResult> {
-        Ok(CacheResult::Deleted)
+    /// Attempts to convert a row number into a file span for this line.
+    pub fn find_line_span(&self, line : usize) -> Option<&Span> {
+        self.lines.get(line - 1)
     }
 
-    /// Removes a file with the given ID from the manifest. Returns `true` if
-    /// the file was removed, and `false` if a file with the given ID doesn't
-    /// exist.
-    pub fn remove(&mut self, file_id : FileId) -> bool {
-        if file_id < self.0.len() {
-            self.0[file_id] = None;
-            true
-        } else {
-            false
+    /// Attempts to convert a byte position to a row and column number.
+    pub fn find_location(&self, pos : usize) -> LineAndColumn {
+        let line = self.find_line(pos);
+        let line_span = &self.lines[line - 1];
+        (line, pos - line_span.start + 1)
+    }
+
+    /// Similar to `find_location`, except returns the start and end lines of a
+    /// complete span.
+    pub fn find_location_span(
+        &self,
+        span : &Span,
+    ) -> (LineAndColumn, LineAndColumn) {
+        let start = self.find_location(span.start);
+        let mut end = self.find_location(span.end);
+        if end.0 > start.0 && end.1 == 1 {
+            // try correct spans that end in the newline character
+            if let Some(prev_line) = self.find_line_span(end.0 - 1) {
+                end.0 -= 1;
+                end.1 = prev_line.len() + 1;
+            }
         }
+        (start, end)
+    }
+}
+
+#[derive(Debug)]
+pub struct FileData {
+    pub id : FileId,
+    pub src : String,
+    pub modified : bool,
+}
+
+impl FileData {
+    /// Creates a new location from a given span, in the current source file.
+    pub fn location(&self, span : &Span) -> Location {
+        Location {
+            span : span.clone(),
+            file_id : self.id,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode)]
+pub struct Location {
+    pub span : Span,
+    pub file_id : FileId,
+}
+
+impl fmt::Debug for Location {
+    fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
+        write!(out, "<{:?} file {}>", self.span, self.file_id)
+    }
+}
+
+/// Represents a span of bytes within a file.
+#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode)]
+pub struct Span {
+    /// The starting byte of the span (inclusive).
+    pub start : usize,
+    /// The ending byte of the span (exclusive).
+    pub end : usize,
+}
+
+impl Span {
+    /// Constructs a new span from this range.
+    pub fn new(range : ops::Range<usize>) -> Self {
+        Self { start : range.start, end : range.end }
+    }
+
+    /// Returns whether the starting byte of the span is greater than or equal
+    /// to the ending byte.
+    pub fn is_empty(&self) -> bool {
+        self.start >= self.end
+    }
+
+    /// Returns the byte length of this span.
+    ///
+    /// If the span is empty, then the length returned is always zero.
+    pub fn len(&self) -> usize {
+        if self.is_empty() { 0 } else { self.end - self.start }
+    }
+
+    /// Joins two spans together using the largest range between them.
+    pub fn join(&self, other : &Self) -> Self {
+        let start = cmp::min(self.start, other.start);
+        let end = cmp::max(self.end, other.end);
+        Self::new(start..end)
+    }
+
+    /// Joins two spans together using the smallest range between them.
+    pub fn diff(&self, other : &Self) -> Self {
+        let end = cmp::max(self.start, other.start);
+        let start = cmp::min(self.end, other.end);
+        Self::new(start..end)
+    }
+
+    /// Uses this span to slice a string intro a substring.
+    pub fn slice<'a>(&self, src : &'a str) -> &'a str {
+        &src[self.start..self.end]
+    }
+
+    /// Shrinks this span by `lpad` bytes from the left, and `rpad` bytes from
+    /// the right.
+    pub fn shrink(&self, lpad : usize, rpad : usize) -> Span {
+        let start = self.start + lpad;
+        let end = self.end - rpad;
+        Self::new(start..end)
+    }
+}
+
+impl fmt::Debug for Span {
+    fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
+        write!(out, "[{}..{}]", self.start, self.end)
     }
 }

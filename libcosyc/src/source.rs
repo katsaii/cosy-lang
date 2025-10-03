@@ -1,4 +1,4 @@
-use std::{ env, fs, cmp, fmt, ops, mem };
+use std::{ env, fs, cmp, fmt, mem };
 use std::path::{ Path, PathBuf };
 use path_clean::PathClean;
 use pathdiff::diff_paths;
@@ -6,20 +6,7 @@ use bincode::{ Encode, Decode };
 
 use crate::error;
 
-/// A simple handle to a file managed by the compiler.
-pub type FileId = usize;
-
-/// The row and column numbers of a source file.
-pub type LineAndColumn = (usize, usize);
-
-/// Represents a span of bytes within a source file.
-#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode)]
-pub struct Location {
-    /// The span information.
-    pub span : Span,
-    /// The file this span occurs in.
-    pub file_id : FileId,
-}
+pub use crate::vfs::{ FileId, Span, Location, LineAndColumn };
 
 impl Location {
     /// Returns the filename a source location points to in the format
@@ -29,12 +16,6 @@ impl Location {
         let file_display = file.path.display();
         let (line, column) = file.find_location(self.span.start);
         format!("{}:{}:{}", file_display, line, column)
-    }
-}
-
-impl fmt::Debug for Location {
-    fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
-        write!(out, "<{:?} file {}>", self.span, self.file_id)
     }
 }
 
@@ -236,68 +217,6 @@ impl FileManager {
     /// panic.
     pub fn get_file(&self, file : FileId) -> &File {
         &self.files[file]
-    }
-}
-
-/// Represents a span of bytes within a file.
-#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode)]
-pub struct Span {
-    /// The starting byte of the span (inclusive).
-    pub start : usize,
-    /// The ending byte of the span (exclusive).
-    pub end : usize,
-}
-
-impl Span {
-    /// Constructs a new span from this range.
-    pub fn new(range : ops::Range<usize>) -> Self {
-        Self { start : range.start, end : range.end }
-    }
-
-    /// Returns whether the starting byte of the span is greater than or equal
-    /// to the ending byte.
-    pub fn is_empty(&self) -> bool {
-        self.start >= self.end
-    }
-
-    /// Returns the byte length of this span.
-    ///
-    /// If the span is empty, then the length returned is always zero.
-    pub fn len(&self) -> usize {
-        if self.is_empty() { 0 } else { self.end - self.start }
-    }
-
-    /// Joins two spans together using the largest range between them.
-    pub fn join(&self, other : &Self) -> Self {
-        let start = cmp::min(self.start, other.start);
-        let end = cmp::max(self.end, other.end);
-        Self::new(start..end)
-    }
-
-    /// Joins two spans together using the smallest range between them.
-    pub fn diff(&self, other : &Self) -> Self {
-        let end = cmp::max(self.start, other.start);
-        let start = cmp::min(self.end, other.end);
-        Self::new(start..end)
-    }
-
-    /// Uses this span to slice a string intro a substring.
-    pub fn slice<'a>(&self, src : &'a str) -> &'a str {
-        &src[self.start..self.end]
-    }
-
-    /// Shrinks this span by `lpad` bytes from the left, and `rpad` bytes from
-    /// the right.
-    pub fn shrink(&self, lpad : usize, rpad : usize) -> Span {
-        let start = self.start + lpad;
-        let end = self.end - rpad;
-        Self::new(start..end)
-    }
-}
-
-impl fmt::Debug for Span {
-    fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
-        write!(out, "[{}..{}]", self.start, self.end)
     }
 }
 
