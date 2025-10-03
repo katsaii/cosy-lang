@@ -1,5 +1,5 @@
 //use crate::parse::ast;
-use crate::error::{ IssueManager, Diagnostic };
+use crate::error::{ IssueManager };
 
 struct ASTLowerCtx<'a> {
     issues : &'a mut IssueManager,

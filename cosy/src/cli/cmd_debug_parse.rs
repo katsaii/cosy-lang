@@ -9,7 +9,9 @@ pub(super) struct Args {
     file_path : PathBuf,
 }
 
-pub(super) fn execute(sess : &mut Session, args : Args) {
+pub(super) fn execute(_err : &mut super::ErrorReporter, _args : Args) {
+    /*
+    let mut sess = Session::default();
     if let Some(ast) = parse::package_from_file(
         &mut sess.issues,
         &mut sess.files,
@@ -17,4 +19,5 @@ pub(super) fn execute(sess : &mut Session, args : Args) {
     ) {
         println!("{:#?}", ast);
     }
+    */
 }

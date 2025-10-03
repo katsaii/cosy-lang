@@ -3,7 +3,7 @@ mod cmd_debug_parse;
 mod cmd_debug_error;
 mod cmd_run;
 
-use std::{ env, io, io::IsTerminal, process::ExitCode };
+use std::{ cmp, env, io, io::IsTerminal, process::ExitCode };
 use clap::{ Parser, Subcommand, Args };
 use libcosyc::Session;
 use libcosyc::reporting::{ self as rep, Renderer };
@@ -36,17 +36,64 @@ enum CosycCommandDebug {
     Error(cmd_debug_error::Args),
 }
 
-pub(super) fn execute(sess : &mut Session) -> ExitCode {
+pub(super) fn execute() -> ExitCode {
     let cosyc_args = Cosyc::parse();
+    let mut reporter = ErrorReporter::new(cosyc_args.use_compact_errors, true);
     match cosyc_args.command {
-        CosycCommand::Run(args) => cmd_run::execute(sess, args),
+        CosycCommand::Run(args) => cmd_run::execute(&mut reporter, args),
         CosycCommand::Debug(debug_cmd) => match debug_cmd {
-            CosycCommandDebug::Lex(args) => cmd_debug_lex::execute(sess, args),
-            CosycCommandDebug::Parse(args) => cmd_debug_parse::execute(sess, args),
-            CosycCommandDebug::Error(args) => cmd_debug_error::execute(sess, args),
+            CosycCommandDebug::Lex(args) => cmd_debug_lex::execute(&mut reporter, args),
+            CosycCommandDebug::Parse(args) => cmd_debug_parse::execute(&mut reporter, args),
+            CosycCommandDebug::Error(args) => cmd_debug_error::execute(&mut reporter, args),
         },
     }
-    report_errors(sess, cosyc_args.use_compact_errors)
+    reporter.finalise()
+}
+
+struct ErrorReporter {
+    stderr : io::Stderr,
+    use_colour : bool,
+    use_compact_errors : bool,
+    exit_code : u8,
+}
+
+impl ErrorReporter {
+    fn new(use_compact_errors : bool, use_colour : bool) -> Self {
+        let (stderr, supports_colour) = stderr_from_env();
+        Self {
+            stderr,
+            use_colour : use_colour && supports_colour,
+            use_compact_errors,
+            exit_code : 0,
+        }
+    }
+
+    fn submit(&mut self, sess : &Session) {
+        let pretty = rep::PrettyPrinter::new(self.use_colour);
+        let result = if self.use_compact_errors {
+            rep::log::LogRenderer(pretty).render_session(&mut self.stderr, sess)
+        } else {
+            rep::cli::CliRenderer(pretty).render_session(&mut self.stderr, sess)
+        };
+        if let Err(err) = result {
+            println!(
+                "ENCOUNTERED AN UNEXPECTED ERROR WHEN REPORTING ERRORS:\n{}",
+                err
+            );
+            self.exit_code = cmp::max(self.exit_code, 2);
+        }
+        if sess.issues.has_errors() {
+            self.exit_code = cmp::max(self.exit_code, 1);
+        }
+    }
+
+    fn finalise(self) -> ExitCode {
+        if self.exit_code == 0 {
+            ExitCode::SUCCESS
+        } else {
+            ExitCode::from(self.exit_code)
+        }
+    }
 }
 
 fn stderr_from_env() -> (io::Stderr, bool) {
@@ -69,28 +116,4 @@ fn stderr_from_env() -> (io::Stderr, bool) {
         true
     };
     (stderr, supports_colour)
-}
-
-fn report_errors(
-    sess : &mut Session,
-    use_compact_errors : bool,
-) -> ExitCode {
-    let (mut stderr, supports_colour) = stderr_from_env();
-    let pretty = rep::PrettyPrinter::new(supports_colour);
-    let result = if use_compact_errors {
-        rep::log::LogRenderer(pretty).render_session(&mut stderr, sess)
-    } else {
-        rep::cli::CliRenderer(pretty).render_session(&mut stderr, sess)
-    };
-    if let Err(err) = result {
-        println!(
-            "ENCOUNTERED AN UNEXPECTED ERROR WHEN REPORTING ERRORS:\n{}",
-            err
-        );
-        return ExitCode::from(2);
-    }
-    if sess.issues.has_errors() {
-        return ExitCode::from(1);
-    }
-    ExitCode::SUCCESS
 }

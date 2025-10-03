@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use libcosyc::Session;
 use libcosyc::error::{ Diagnostic, Severity };
 use libcosyc::parse::lex::{ Lexer, Token };
+use libcosyc::vfs;
 
 /// Tokenises a file, reporting each token as an error. Used to test error
 /// reporting.
@@ -14,7 +15,13 @@ pub(super) struct Args {
     file_path : PathBuf,
 }
 
-pub(super) fn execute(sess : &mut Session, args : Args) {
+pub(super) fn execute(err : &mut super::ErrorReporter, args : Args) {
+    let mut sess = Session::new();
+
+    let mut manifest = vfs::Manifest::default();
+    let out = manifest.load(&args.file_path);
+    println!("{:?}", out);
+
     let file_id = match sess.files.load(args.file_path) {
         Ok(x) => x,
         Err(diag) => {
@@ -64,4 +71,5 @@ pub(super) fn execute(sess : &mut Session, args : Args) {
                 "ends here".into(),
             ]))
         .report(&mut sess.issues);
+    err.submit(&sess)
 }

@@ -1,5 +1,5 @@
 use bincode::{ Encode, Decode };
-use std::path::PathBuf;
+use std::path::{ Path, PathBuf };
 use std::hash::{ DefaultHasher, Hash, Hasher };
 use std::collections::HashMap;
 use std::{ io, fs, fmt, ops, cmp };
@@ -56,20 +56,20 @@ impl Manifest {
 
     /// Loads a file with the given path; returning its ID, its content, and
     /// whether the file has been modified.
-    pub fn load(&mut self, path : PathBuf) -> io::Result<FileData> {
-        let file_src = match fs::read_to_string(&path) {
+    pub fn load(&mut self, path : &Path) -> io::Result<FileData> {
+        let file_src = match fs::read_to_string(path) {
             Ok(ok) => ok,
             Err(err) => {
                 // delete the cache
-                if let Some(file_id) = self.path_2_id.get(&path) {
+                if let Some(file_id) = self.path_2_id.get(path) {
                     self.id_2_meta.remove(file_id);
-                    self.path_2_id.remove(&path);
+                    self.path_2_id.remove(path);
                 }
                 return Err(err);
             }
         };
         let (hash, size) = hash_str(&file_src);
-        let (file_id, modified) = if let Some(file_id) = self.path_2_id.get(&path) {
+        let (file_id, modified) = if let Some(file_id) = self.path_2_id.get(path) {
             let file_id = *file_id;
             // file already exists, check the cache
             let file_meta = self.id_2_meta.get(&file_id).unwrap();
@@ -77,10 +77,14 @@ impl Manifest {
         } else {
             // file doesn't exist, add it
             let file_id = self.next_id;
-            self.path_2_id.insert(path.clone(), file_id);
             self.next_id += 1;
-            let file_meta = FileMeta { path, lines : vec![], hash, size };
+            let file_meta = FileMeta {
+                path : path.to_owned(),
+                lines : vec![],
+                hash, size,
+            };
             self.id_2_meta.insert(file_id, file_meta);
+            self.path_2_id.insert(path.to_owned(), file_id);
             (file_id, true)
         };
         if modified {

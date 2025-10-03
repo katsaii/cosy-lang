@@ -18,7 +18,9 @@ const HEAD_SRC : &str = "src";
 
 const MAX_SRC_LENGTH : usize = 64;
 
-pub(super) fn execute(sess : &mut Session, args : Args) {
+pub(super) fn execute(_err : &mut super::ErrorReporter, _args : Args) {
+    /*
+    let mut sess = Session::default();
     let file_id = match sess.files.load(args.file_path) {
         Ok(x) => x,
         Err(err) => {
@@ -61,4 +63,5 @@ pub(super) fn execute(sess : &mut Session, args : Args) {
             span, name, src_trunc, w_span=max_span, w_name=max_name
         );
     }
+    */
 }

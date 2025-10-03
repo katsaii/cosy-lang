@@ -5,20 +5,32 @@ pub mod parse;
 pub mod typing;
 pub mod reporting;
 
+use std::path::PathBuf;
+
 /// Cosy language file extension.
 pub const EXT_SRC : &'static str = "cy";
 
 /// Cosy IR file extension.
 pub const EXT_IR : &'static str = "casm";
 
-/// Cosy IDL file extension.
-pub const EXT_IDL : &'static str = "cidl";
-
-/// Common info used throughout many parts of the compiler.
-#[derive(Default)]
+/// Common info used throughout compilation of a package.
 pub struct Session {
     /// Stores all files managed by a compiler session.
     pub files : source::FileManager,
+    pub manifest : vfs::Manifest,
     /// Stores any diagnostic information reported by the compiler tools.
     pub issues : error::IssueManager,
+    /// The path to the build directory to write compiler files to if needed.
+    pub build_dir : PathBuf,
+}
+
+impl Session {
+    pub fn new() -> Self {
+        Self {
+            files : source::FileManager::default(),
+            manifest : vfs::Manifest::default(),
+            issues : error::IssueManager::default(),
+            build_dir : PathBuf::from("build"),
+        }
+    }
 }
