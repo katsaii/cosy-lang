@@ -93,6 +93,34 @@ impl Manifest {
         }
         Ok(FileData { id : file_id, src : file_src, modified })
     }
+
+    /// Reads the contents of the files in this manifest and returns them.
+    pub fn read_files(&self) -> io::Result<ManifestFiles> {
+        let mut files = HashMap::new();
+        for (path, file_id) in &self.path_2_id {
+            let file = fs::read_to_string(path)?;
+            files.insert(*file_id, file);
+        }
+        Ok(ManifestFiles { manifest : self, files })
+    }
+}
+
+pub struct ManifestFiles<'m> {
+    manifest : &'m Manifest,
+    files : HashMap<FileId, String>,
+}
+
+impl<'m> ManifestFiles<'m> {
+    /// Gets the source code of a file with the given ID.
+    /// Panics if the file wasn't opened with `open`.
+    pub fn get_src<'a>(&'a self, file_id : FileId) -> &'a str {
+        self.files.get(&file_id).unwrap()
+    }
+
+    /// Gets the metadata of a file with the given ID.
+    pub fn get_meta(&self, file_id : FileId) -> &'m FileMeta {
+        self.manifest.get(file_id).unwrap()
+    }
 }
 
 #[derive(Debug, Encode, Decode)]

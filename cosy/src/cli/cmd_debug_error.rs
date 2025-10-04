@@ -17,21 +17,17 @@ pub(super) struct Args {
 
 pub(super) fn execute(err : &mut super::ErrorReporter, args : Args) {
     let mut sess = Session::new();
-
-    let mut manifest = vfs::Manifest::default();
-    let out = manifest.load(&args.file_path);
-    println!("{:?}", out);
-
-    let file_id = match sess.files.load(args.file_path) {
-        Ok(x) => x,
-        Err(diag) => {
-            diag.report(&mut sess.issues);
+    let file_data = match sess.manifest.load(&args.file_path) {
+        Ok(ok) => ok,
+        Err(err) => {
+            Diagnostic::error()
+                .message(("failed to open file `{}`", [args.file_path.display().into()]))
+                .note(("{}", [err.into()]))
+                .report(&mut sess.issues);
             return;
-        },
+        }
     };
-    let file = sess.files.get_file(file_id);
-    let src = file.get_src();
-    let mut lexer = Lexer::new(&src);
+    let mut lexer = Lexer::new(&file_data.src);
     let span_start = lexer.peek_span().clone();
     loop {
         let token = lexer.next();
@@ -43,11 +39,11 @@ pub(super) fn execute(err : &mut super::ErrorReporter, args : Args) {
         };
         let mut diag = Diagnostic::new(severity)
             .message(("token name: {}", [token_name.into()]))
-            .label((file.location(&token_span), [
+            .label((file_data.location(&token_span), [
                 ("span: {}", [format!("{:?}", token_span).into()]).into(),
             ]));
         if lexer.peek_linebreak() {
-            diag = diag.label_other((file.location(&lexer.peek_span()), [
+            diag = diag.label_other((file_data.location(&lexer.peek_span()), [
                 ("next line continues here").into(),
             ]));
         }
@@ -60,14 +56,14 @@ pub(super) fn execute(err : &mut super::ErrorReporter, args : Args) {
     let span_full = span_start.join(span_end);
     Diagnostic::warning()
         .message("full span")
-        .label((file.location(&span_full), [
+        .label((file_data.location(&span_full), [
                 ("span: {}", [format!("{:?}", span_full).into()]).into(),
                 "multiple captions are split over multiple lines nicely".into(),
             ]))
-        .label_other((file.location(&span_start), [
+        .label_other((file_data.location(&span_start), [
                 "starts here".into(),
             ]))
-        .label_other((file.location(&span_end), [
+        .label_other((file_data.location(&span_end), [
                 "ends here".into(),
             ]))
         .report(&mut sess.issues);

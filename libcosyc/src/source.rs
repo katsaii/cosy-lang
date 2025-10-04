@@ -8,17 +8,6 @@ use crate::error;
 
 pub use crate::vfs::{ FileId, Span, Location, LineAndColumn };
 
-impl Location {
-    /// Returns the filename a source location points to in the format
-    /// `dirname/filename.ext:line:column`.
-    pub fn show_path(&self, files : &FileManager) -> String {
-        let file = files.get_file(self.file_id);
-        let file_display = file.path.display();
-        let (line, column) = file.find_location(self.span.start);
-        format!("{}:{}:{}", file_display, line, column)
-    }
-}
-
 /// Pairs a value with its location the source code.
 #[derive(Encode, Decode)]
 pub struct SourceRef<T> {
@@ -29,6 +18,17 @@ pub struct SourceRef<T> {
 impl<T : fmt::Debug> fmt::Debug for SourceRef<T> {
     fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
         self.value.fmt(out)
+    }
+}
+
+impl Location {
+    /// Returns the filename a source location points to in the format
+    /// `dirname/filename.ext:line:column`.
+    pub fn show_path(&self, files : &FileManager) -> String {
+        let file_meta = files.get_file(self.file_id);
+        let file_display = file_meta.path.display();
+        let (line, column) = file_meta.find_location(self.span.start);
+        format!("{}:{}:{}", file_display, line, column)
     }
 }
 
