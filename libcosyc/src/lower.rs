@@ -1,4 +1,6 @@
-use crate::{ parse::ast, typing::hir };
+pub mod hir;
+
+use crate::parse::ast;
 use crate::error::{ IssueManager, Diagnostic };
 
 /// Responsible for building the first-pass HIR of a cosy file from its AST.

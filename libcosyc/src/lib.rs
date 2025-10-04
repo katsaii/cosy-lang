@@ -2,7 +2,8 @@ pub mod source;
 pub mod vfs;
 pub mod error;
 pub mod parse;
-pub mod typing;
+pub mod lower;
+pub mod r#gen;
 pub mod reporting;
 
 use std::path::PathBuf;

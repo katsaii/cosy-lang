@@ -1,7 +1,7 @@
 use std::path::{ Path, PathBuf };
 use libcosyc::{ Session, error::Diagnostic };
 use libcosyc::parse::{ Parser, ast };
-use libcosyc::typing::{ lower::Ast2Hir, hir };
+use libcosyc::lower::{ Ast2Hir, hir };
 
 /// Parses the contents of a file and prints its untyped AST.
 #[derive(super::Args)]
