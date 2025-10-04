@@ -65,7 +65,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_module_body(&mut self) -> ast::Node {
-        let mut decls = Vec::new();
+        let mut items = Vec::new();
         let span_start = self.lexer.peek_span().clone();
         while !matches!(self.lexer.peek(), Token::End | Token::EoF) {
             let decl = if let Some(result) = self.try_parse_decl() {
@@ -79,10 +79,10 @@ impl<'a> Parser<'a> {
                 self.assert("unexpected symbol in declaration scope");
                 continue;
             };
-            decls.push(decl);
+            items.push(decl);
         }
         let span = span_start.join(self.lexer.peek_span());
-        ast::Node::Block(self.make_dbg(&span, decls))
+        ast::Node::Block(self.make_dbg(&span, items))
     }
 
     fn try_parse_decl(&mut self) -> Option<Option<ast::Node>> {

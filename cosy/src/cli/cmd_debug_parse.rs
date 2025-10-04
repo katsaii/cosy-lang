@@ -1,6 +1,7 @@
 use std::path::{ Path, PathBuf };
 use libcosyc::{ Session, error::Diagnostic };
 use libcosyc::parse::{ Parser, ast };
+use libcosyc::typing::{ lower::Ast2Hir, hir };
 
 /// Parses the contents of a file and prints its untyped AST.
 #[derive(super::Args)]
@@ -32,7 +33,8 @@ fn parse_session(sess : &mut Session, path : &Path, lower : bool) -> Option<()> 
     };
     let ast = Parser::parse(&mut sess.issues, &file_data);
     if lower {
-        println!("HIR");
+        let hir = Ast2Hir::lower(&mut sess.issues, &ast);
+        hir::debug_print_hir(&sess.manifest, &hir);
     } else {
         ast::debug_print_ast(&sess.manifest, &ast);
     }

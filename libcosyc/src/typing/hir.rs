@@ -3,13 +3,20 @@
 
 use bincode::{ Encode, Decode };
 
-use crate::source::Located;
+use crate::{ source::Located, vfs::Manifest };
 
 pub use crate::parse::ast::{ Symbol, Visibility };
 
-#[derive(Debug, Encode, Decode)]
+#[derive(Debug, Default, Encode, Decode)]
 pub struct Module {
-    pub decls : Vec<TopDecl>,
+    pub items : Vec<ModuleItem>,
+}
+
+/// Top-level declarations.
+#[derive(Debug, Encode, Decode)]
+pub struct ModuleItem {
+    vis : Visibility,
+    decl : Decl,
 }
 
 /// All expressions available to Cosy. Note: this doesn't include constructs
@@ -44,9 +51,7 @@ pub enum Decl {
     },
 }
 
-/// Top-level declarations
-#[derive(Debug, Encode, Decode)]
-pub struct TopDecl {
-    vis : Visibility,
-    decl : Decl,
+/// Pretty prints HIR for debugging purposes.
+pub fn debug_print_hir(_manifest : &Manifest, module : &Module) {
+    println!("{:?}", module);
 }
