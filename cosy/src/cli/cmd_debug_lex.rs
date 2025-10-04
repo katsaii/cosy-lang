@@ -1,6 +1,7 @@
-use std::{ cmp, path::PathBuf };
+use std::cmp;
+use std::path::{ Path, PathBuf };
+use libcosyc::{ Session, error::Diagnostic };
 use libcosyc::parse::lex::{ Lexer, Token };
-use libcosyc::Session;
 
 /// Tokenises a file and outputs its lexical info.
 ///
@@ -18,19 +19,25 @@ const HEAD_SRC : &str = "src";
 
 const MAX_SRC_LENGTH : usize = 64;
 
-pub(super) fn execute(_err : &mut super::ErrorReporter, _args : Args) {
-    /*
-    let mut sess = Session::default();
-    let file_id = match sess.files.load(args.file_path) {
-        Ok(x) => x,
+pub(super) fn execute(err : &mut super::ErrorReporter, args : Args) {
+    let mut sess = Session::new();
+    lex_session(&mut sess, &args.file_path);
+    err.submit(&sess);
+}
+
+fn lex_session(sess : &mut Session, path : &Path) -> Option<()> {
+    let file_data = match sess.manifest.load(path) {
+        Ok(ok) => ok,
         Err(err) => {
-            err.report(&mut sess.issues);
-            return;
+            Diagnostic::error()
+                .message(("failed to open file `{}`", [path.display().into()]))
+                .note(("{}", [err.into()]))
+                .report(&mut sess.issues);
+            return None;
         },
     };
-    let file = sess.files.get_file(file_id);
-    let src = file.get_src();
-    let mut lexer = Lexer::new(&src);
+    let src = &file_data.src;
+    let mut lexer = Lexer::new(src);
     let mut tokens = vec![];
     let mut max_span = HEAD_SPAN.len();
     let mut max_name = HEAD_NAME.len();
@@ -63,5 +70,5 @@ pub(super) fn execute(_err : &mut super::ErrorReporter, _args : Args) {
             span, name, src_trunc, w_span=max_span, w_name=max_name
         );
     }
-    */
+    Some(())
 }

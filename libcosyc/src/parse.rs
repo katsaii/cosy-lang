@@ -1,33 +1,28 @@
-///! Parses the contents of a Cosy source file into untyped AST.
-
 pub mod ast;
 pub mod lex;
 
-use std::path::{ PathBuf, Path };
 use lex::Token;
-use crate::source::{ Symbol, Span, Location, SourceRef, File };
-use crate::vfs::{ Manifest, FileData };
+use crate::source::{ Span, Location, Located };
+use crate::vfs::FileData;
 use crate::error::{ IssueManager, Diagnostic };
-use crate::Session;
 
-struct Parser<'a> {
+/// Parses the contents of a Cosy source file into an untyped AST.
+pub struct Parser<'a> {
     issues : &'a mut IssueManager,
     file : &'a FileData,
     lexer : lex::Lexer<'a>,
 }
 
 impl<'a> Parser<'a> {
-    fn parse(
-        issues : &'a mut IssueManager,
-        file : &'a FileData,
-    ) -> ast::Node {
+    /// Parses the contents of a module and reports any errors to `issues`.
+    pub fn parse(issues : &'a mut IssueManager, file : &'a FileData) -> ast::Node {
         let lexer = lex::Lexer::new(&file.src);
         let mut parser = Self { issues, file, lexer };
         parser.parse_module_body()
     }
 
-    fn make_dbg<T>(&self, span : &Span, value : T) -> SourceRef<T> {
-        SourceRef { value, loc : self.make_loc(span) }
+    fn make_dbg<T>(&self, span : &Span, value : T) -> Located<T> {
+        Located { value, loc : self.make_loc(span) }
     }
 
     fn make_loc(&self, span : &Span) -> Location {
@@ -194,7 +189,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_id(&mut self) -> Option<SourceRef<Symbol>> {
+    fn parse_id(&mut self) -> Option<Located<ast::Symbol>> {
         let srcloc = if let Token::IdRaw { unclosed } = self.lexer.peek() {
             let unclosed = *unclosed;
             let (span, _) = self.lexer.next();
@@ -214,29 +209,4 @@ impl<'a> Parser<'a> {
         };
         Some(srcloc)
     }
-}
-
-/// Parses a package from a root module. Also handles the recursive parsing
-/// of submodules.
-///
-/// Any errors encountered whilst parsing are reported to `issues`.
-pub fn package_from_file(
-    sess : &mut Session,
-    file_path : &Path,
-) -> Option<(Symbol, ast::Node)> {
-    let file_data = match sess.manifest.load(file_path) {
-        Ok(ok) => ok,
-        Err(err) => {
-            Diagnostic::error()
-                .message(("failed to open package root `{}`", [file_path.display().into()]))
-                .note(("{}", [err.into()]))
-                .report(&mut sess.issues);
-            return None;
-        },
-    };
-    let name = file_path.file_stem().unwrap().to_string_lossy().to_string();
-    //let module_dir = file.path.parent().unwrap().to_path_buf();
-    let module = Parser::parse(&mut sess.issues, &file_data);
-    // TODO :: multiple-files/incremental compilation
-    Some((name, module))
 }

@@ -1,6 +1,6 @@
 use std::{ fmt, result };
-use crate::reporting::Colour;
-use crate::vfs::{ Location, ManifestFiles };
+
+use crate::{ source::Location, vfs::ManifestFiles, reporting::Colour };
 
 /// A result type for unwinding diagnostic info.
 pub type Result<T> = result::Result<T, Diagnostic>;

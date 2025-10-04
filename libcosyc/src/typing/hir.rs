@@ -1,10 +1,9 @@
 //! Similar to the AST, except it supports type annoations, and simplifies some
 //! language constructs.
 
-pub use crate::parse::ast::Visibility;
+use crate::source::Located;
 
-//use crate::parse::ast;
-use crate::source::{ Symbol, SourceRef };
+pub use crate::parse::ast::{ Symbol, Visibility };
 
 /// HIR packages erase the concept of multiple-files, collapsing them into a
 /// single translation unit.
@@ -18,11 +17,11 @@ pub struct Package {
 /// like `var`, since those are statements.
 #[derive(Debug)]
 pub enum Expr {
-    NumIntegral(SourceRef<u128>),
-    NumRational(SourceRef<Symbol>),
-    Bool(SourceRef<bool>),
-    Id(SourceRef<Symbol>),
-    Block(SourceRef<Vec<Stmt>>),
+    NumIntegral(Located<u128>),
+    NumRational(Located<Symbol>),
+    Bool(Located<bool>),
+    Id(Located<Symbol>),
+    Block(Located<Vec<Stmt>>),
 }
 
 /// All statements available to Cosy.
@@ -31,7 +30,7 @@ pub enum Stmt {
     Decl(Decl),
     Expr(Expr),
     Local {
-        name : SourceRef<Symbol>,
+        name : Located<Symbol>,
         init : Option<Expr>,
     },
 }
@@ -41,7 +40,7 @@ pub enum Stmt {
 #[derive(Debug)]
 pub enum Decl {
     Fn {
-        name : SourceRef<Symbol>,
+        name : Located<Symbol>,
         body : Box<Expr>,
     },
 }

@@ -1,6 +1,6 @@
 use bincode::{ Encode, Decode };
 
-use crate::source::{ Symbol, SourceRef };
+use crate::source::Located;
 
 /// Declaration visibility level.
 #[derive(Debug, Encode, Decode)]
@@ -9,6 +9,10 @@ pub enum Visibility {
     Internal,
 }
 
+/// An owned section of source code, such as a string literal after resolving
+/// escape codes.
+pub type Symbol = String;
+
 /// All AST nodes available to Cosy.
 ///
 /// Although it's possible to construct them, any malformed ASTs will raise an
@@ -16,25 +20,25 @@ pub enum Visibility {
 #[derive(Debug, Encode, Decode)]
 pub enum Node {
     // expressions
-    NumIntegral(SourceRef<u128>),
-    NumRational(SourceRef<Symbol>),
-    Bool(SourceRef<bool>),
-    Id(SourceRef<Symbol>),
-    Block(SourceRef<Vec<Node>>),
-    Parens(SourceRef<Box<Node>>),
+    NumIntegral(Located<u128>),
+    NumRational(Located<Symbol>),
+    Bool(Located<bool>),
+    Id(Located<Symbol>),
+    Block(Located<Vec<Node>>),
+    Parens(Located<Box<Node>>),
     // statments
     Local {
-        name : SourceRef<Symbol>,
+        name : Located<Symbol>,
         init : Option<Box<Node>>,
     },
     // declarations
     Fn {
-        name : SourceRef<Symbol>,
+        name : Located<Symbol>,
         body : Box<Node>,
     },
     // misc
     Scope {
-        vis : SourceRef<Visibility>,
+        vis : Located<Visibility>,
         node : Box<Node>,
     },
 }

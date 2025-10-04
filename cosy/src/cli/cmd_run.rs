@@ -10,6 +10,8 @@ pub(super) struct Args {
     package_path : Option<String>,
 }
 
-pub(super) fn execute(_err : &mut super::ErrorReporter, _args : Args) {
+pub(super) fn execute(err : &mut super::ErrorReporter, _args : Args) {
+    let sess = Session::new();
     println!("Hello, world!");
+    err.submit(&sess);
 }
