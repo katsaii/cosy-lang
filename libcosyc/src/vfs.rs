@@ -112,14 +112,13 @@ pub struct ManifestFiles<'m> {
 
 impl<'m> ManifestFiles<'m> {
     /// Gets the source code of a file with the given ID.
-    /// Panics if the file wasn't opened with `open`.
-    pub fn get_src<'a>(&'a self, file_id : FileId) -> &'a str {
-        self.files.get(&file_id).unwrap()
+    pub fn get_src<'a>(&'a self, file_id : FileId) -> Option<&'a str> {
+        self.files.get(&file_id).map(|x| x.as_str())
     }
 
     /// Gets the metadata of a file with the given ID.
-    pub fn get_meta(&self, file_id : FileId) -> &'m FileMeta {
-        self.manifest.get(file_id).unwrap()
+    pub fn get_meta(&self, file_id : FileId) -> Option<&'m FileMeta> {
+        self.manifest.get(file_id)
     }
 }
 
