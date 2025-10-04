@@ -108,7 +108,7 @@ impl Manifest {
 }
 
 pub struct ManifestFiles<'m> {
-    manifest : &'m Manifest,
+    pub(crate) manifest : &'m Manifest,
     files : HashMap<FileId, String>,
 }
 

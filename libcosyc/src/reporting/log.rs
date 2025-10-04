@@ -51,7 +51,7 @@ impl Renderer for LogRenderer {
                     self.0.write(out, ", ")?;
                 }
                 first = false;
-                self.0.write(out, &label.location.show_path(files))?;
+                self.0.write(out, &label.location.show_path(files.manifest))?;
             }
             self.0.clear_style(out)?;
         }

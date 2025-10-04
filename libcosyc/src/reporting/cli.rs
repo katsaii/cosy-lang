@@ -82,7 +82,7 @@ impl CliRenderer {
         self.0.skip(out, margin)?;
         self.0.write_style_fg(out, Colour::BrightCyan)?;
         self.0.write(out, ">>> ")?;
-        self.0.write(out, &label.location.show_path(files))?;
+        self.0.write(out, &label.location.show_path(files.manifest))?;
         self.0.clear_style(out)?;
         self.0.writeln(out)?;
         // render span

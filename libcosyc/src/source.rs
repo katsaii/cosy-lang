@@ -1,7 +1,7 @@
 use std::{ cmp, fmt, ops };
 use bincode::{ Encode, Decode };
 
-use crate::vfs::ManifestFiles;
+use crate::vfs::Manifest;
 
 pub use crate::vfs::FileId;
 
@@ -24,8 +24,8 @@ impl fmt::Debug for Location {
 impl Location {
     /// Returns the filename a source location points to in the format
     /// `dirname/filename.ext:line:column`.
-    pub fn show_path(&self, files : &ManifestFiles) -> String {
-        let file_meta = files.get_meta(self.file_id).unwrap();
+    pub fn show_path(&self, files : &Manifest) -> String {
+        let file_meta = files.get(self.file_id).unwrap();
         let file_display = file_meta.path.display();
         let (line, column) = file_meta.find_location(self.span.start);
         format!("{}:{}:{}", file_display, line, column)
@@ -117,21 +117,5 @@ impl Span {
 impl fmt::Debug for Span {
     fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
         write!(out, "[{}..{}]", self.start, self.end)
-    }
-}
-
-/// Pairs a value with its location in a file.
-#[derive(Debug, Encode, Decode)]
-pub struct Spanned<T> {
-    pub value : T,
-    pub span : Span,
-}
-
-impl<T> Spanned<T> {
-    pub(crate) fn into_located(self, file_id : FileId) -> Located<T> {
-        Located {
-            value : self.value,
-            loc : Location { span : self.span, file_id }
-        }
     }
 }
