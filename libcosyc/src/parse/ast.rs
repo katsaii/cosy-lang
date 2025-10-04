@@ -17,7 +17,7 @@ pub type Symbol = String;
 ///
 /// Although it's possible to construct them, any malformed ASTs will raise an
 /// error during the AST -> HIR lowering step.
-#[derive(Debug, Encode, Decode)]
+#[derive(Debug)]
 pub enum Node {
     // expressions
     NumIntegral(Located<u128>),

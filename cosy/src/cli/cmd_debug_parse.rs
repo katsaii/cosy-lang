@@ -7,15 +7,18 @@ pub(super) struct Args {
     /// Path of the `.cy` file to parse.
     #[arg()]
     file_path : PathBuf,
+    /// Whether to lower the AST to HIR.
+    #[arg(short, long)]
+    lower : bool,
 }
 
 pub(super) fn execute(err : &mut super::ErrorReporter, args : Args) {
     let mut sess = Session::new();
-    parse_session(&mut sess, &args.file_path);
+    parse_session(&mut sess, &args.file_path, args.lower);
     err.submit(&sess);
 }
 
-fn parse_session(sess : &mut Session, path : &Path) -> Option<()> {
+fn parse_session(sess : &mut Session, path : &Path, lower : bool) -> Option<()> {
     let file_data = match sess.manifest.load(path) {
         Ok(ok) => ok,
         Err(err) => {
@@ -26,8 +29,11 @@ fn parse_session(sess : &mut Session, path : &Path) -> Option<()> {
             return None;
         },
     };
-    
     let ast = Parser::parse(&mut sess.issues, &file_data);
-    println!("{:#?}", ast);
+    if lower {
+        println!("HIR");
+    } else {
+        println!("{:#?}", ast);
+    }
     Some(())
 }

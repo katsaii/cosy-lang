@@ -1,21 +1,20 @@
-//! Similar to the AST, except it supports type annoations, and simplifies some
-//! language constructs.
+//! Similar to the AST, except it performs simple type inference and simplifies
+//! some language constructs.
+
+use bincode::{ Encode, Decode };
 
 use crate::source::Located;
 
 pub use crate::parse::ast::{ Symbol, Visibility };
 
-/// HIR packages erase the concept of multiple-files, collapsing them into a
-/// single translation unit.
-#[derive(Debug)]
-pub struct Package {
-    pub name : String,
+#[derive(Debug, Encode, Decode)]
+pub struct Module {
     pub decls : Vec<TopDecl>,
 }
 
 /// All expressions available to Cosy. Note: this doesn't include constructs
 /// like `var`, since those are statements.
-#[derive(Debug)]
+#[derive(Debug, Encode, Decode)]
 pub enum Expr {
     NumIntegral(Located<u128>),
     NumRational(Located<Symbol>),
@@ -25,7 +24,7 @@ pub enum Expr {
 }
 
 /// All statements available to Cosy.
-#[derive(Debug)]
+#[derive(Debug, Encode, Decode)]
 pub enum Stmt {
     Decl(Decl),
     Expr(Expr),
@@ -37,7 +36,7 @@ pub enum Stmt {
 
 /// All declarations available to Cosy. Note: these should all be valid
 /// top-level declarations.
-#[derive(Debug)]
+#[derive(Debug, Encode, Decode)]
 pub enum Decl {
     Fn {
         name : Located<Symbol>,
@@ -46,7 +45,7 @@ pub enum Decl {
 }
 
 /// Top-level declarations
-#[derive(Debug)]
+#[derive(Debug, Encode, Decode)]
 pub struct TopDecl {
     vis : Visibility,
     decl : Decl,
