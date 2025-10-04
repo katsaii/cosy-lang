@@ -1,9 +1,10 @@
 mod token;
 
-pub use token::Token;
-
 use std::{ mem, str::CharIndices };
-use crate::source::Span;
+
+use crate::{ source::Span, vfs };
+
+pub use token::Token;
 
 /// Pairs a token with its byte span in the source code.
 pub type TokenSpan = (Span, Token);
@@ -199,3 +200,24 @@ pub(super) fn is_whitespace(x : char) -> bool { !is_eol(x) && x.is_whitespace() 
 pub(super) fn is_alpha(x : char) -> bool { x.is_ascii_alphabetic() }
 pub(super) fn is_digit(x : char) -> bool { x.is_ascii_digit() }
 pub(super) fn is_digit_36(x : char) -> bool { is_digit(x) || is_alpha(x) }
+
+const MAX_SRC_LENGTH : usize = 64;
+
+/// Pretty prints a sequence of tokens for debugging purposes.
+pub fn debug_print_tokens(
+    src : &str,
+    lines : &[Span],
+    token_spans : &[TokenSpan]
+) {
+    println!("row:col\t\ttoken\t\tspan\n");
+    for (span, token) in token_spans {
+        let (line, col) = Span::find_location(lines, span.start);
+        print!("{}:{}\t\t{:?}\t\t{:?}\t\t", line, col, token, span);
+        let token_str = span.slice(&src);
+        if token_str.len() > MAX_SRC_LENGTH {
+            println!("...");
+        } else {
+            println!("{:?}", token_str);
+        };
+    }
+}

@@ -1,7 +1,7 @@
 use std::cmp;
 use std::path::{ Path, PathBuf };
 use libcosyc::{ Session, error::Diagnostic };
-use libcosyc::parse::lex::{ Lexer, Token };
+use libcosyc::parse::lex::{ Lexer, Token, self as lex };
 
 /// Tokenises a file and outputs its lexical info.
 ///
@@ -36,39 +36,18 @@ fn lex_session(sess : &mut Session, path : &Path) -> Option<()> {
             return None;
         },
     };
+    let file_meta = sess.manifest.get(file_data.id).unwrap();
     let src = &file_data.src;
     let mut lexer = Lexer::new(src);
     let mut tokens = vec![];
-    let mut max_span = HEAD_SPAN.len();
-    let mut max_name = HEAD_NAME.len();
     loop {
         let token = lexer.next();
-        let token_span = format!("{:?}", token.0);
-        let token_name = format!("{:?}", token.1);
-        let token_src = format!("{:?}", token.0.slice(&src));
-        max_span = cmp::max(max_span, token_span.len());
-        max_name = cmp::max(max_name, token_name.len());
-        tokens.push((token_span, token_name, token_src));
-        if token.1 == Token::EoF {
+        let is_eof = token.1 == Token::EoF;
+        tokens.push(token);
+        if is_eof {
             break;
         }
     }
-    println!(
-        "{:<w_span$} | {:<w_name$} | {}",
-        HEAD_SPAN, HEAD_NAME, HEAD_SRC, w_span=max_span, w_name=max_name
-    );
-    println!(
-        "{:=<w_span$} | {:=<w_name$} | ===",
-        "", "", w_span=max_span, w_name=max_name
-    );
-    for (span, name, src) in tokens {
-        let src_trunc = if src.len() > MAX_SRC_LENGTH {
-            format!("({} bytes)", src.len())
-        } else { src };
-        println!(
-            "{:<w_span$} | {:<w_name$} | {}",
-            span, name, src_trunc, w_span=max_span, w_name=max_name
-        );
-    }
+    lex::debug_print_tokens(src, &file_meta.lines, &tokens);
     Some(())
 }

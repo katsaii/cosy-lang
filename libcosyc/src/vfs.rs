@@ -135,16 +135,7 @@ pub struct FileMeta {
 impl FileMeta {
     /// Searches the lines vector for a span that encloses a specific location.
     pub fn find_line(&self, pos : usize) -> usize {
-        use cmp::Ordering as ord;
-        let comparator = |x : &Span| match x {
-            x if x.start > pos => ord::Greater,
-            x if x.end < pos => ord::Less,
-            _ => ord::Equal,
-        };
-        match self.lines.binary_search_by(comparator) {
-            Ok(x) => x + 1,
-            Err(x) => if x < 1 { 1 } else { x }
-        }
+        Span::find_line(&self.lines, pos)
     }
 
     /// Attempts to convert a row number into a file span for this line.
@@ -154,9 +145,7 @@ impl FileMeta {
 
     /// Attempts to convert a byte position to a row and column number.
     pub fn find_location(&self, pos : usize) -> LineAndColumn {
-        let line = self.find_line(pos);
-        let line_span = &self.lines[line - 1];
-        (line, pos - line_span.start + 1)
+        Span::find_location(&self.lines, pos)
     }
 
     /// Similar to `find_location`, except returns the start and end lines of a

@@ -99,6 +99,25 @@ impl Span {
         let end = self.end - rpad;
         Self::new(start..end)
     }
+
+    pub(crate) fn find_line(lines : &[Span], pos : usize) -> usize {
+        use cmp::Ordering as ord;
+        let comparator = |x : &Span| match x {
+            x if x.start > pos => ord::Greater,
+            x if x.end < pos => ord::Less,
+            _ => ord::Equal,
+        };
+        match lines.binary_search_by(comparator) {
+            Ok(x) => x + 1,
+            Err(x) => if x < 1 { 1 } else { x }
+        }
+    }
+
+    pub(crate) fn find_location(lines : &[Span], pos : usize) -> LineAndColumn {
+        let line = Span::find_line(lines, pos);
+        let line_span = &lines[line - 1];
+        (line, pos - line_span.start + 1)
+    }
 }
 
 impl fmt::Debug for Span {
