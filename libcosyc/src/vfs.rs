@@ -2,7 +2,7 @@ use bincode::{ Encode, Decode };
 use std::path::{ Path, PathBuf };
 use std::hash::{ DefaultHasher, Hash, Hasher };
 use std::collections::HashMap;
-use std::{ io, fs, cmp };
+use std::{ io, fs };
 
 use crate::source::{ Span, Location, LineAndColumn };
 

@@ -2,7 +2,7 @@ mod token;
 
 use std::{ mem, str::CharIndices };
 
-use crate::{ source::Span, vfs };
+use crate::source::Span;
 
 pub use token::Token;
 

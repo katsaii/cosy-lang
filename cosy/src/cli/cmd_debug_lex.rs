@@ -1,4 +1,3 @@
-use std::cmp;
 use std::path::{ Path, PathBuf };
 use libcosyc::{ Session, error::Diagnostic };
 use libcosyc::parse::lex::{ Lexer, Token, self as lex };
@@ -12,12 +11,6 @@ pub(super) struct Args {
     #[arg()]
     file_path : PathBuf,
 }
-
-const HEAD_SPAN : &str = "span";
-const HEAD_NAME : &str = "name";
-const HEAD_SRC : &str = "src";
-
-const MAX_SRC_LENGTH : usize = 64;
 
 pub(super) fn execute(err : &mut super::ErrorReporter, args : Args) {
     let mut sess = Session::new();

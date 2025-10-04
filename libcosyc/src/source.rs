@@ -8,19 +8,6 @@ pub use crate::vfs::FileId;
 /// The row and column numbers of a source file.
 pub type LineAndColumn = (usize, usize);
 
-/// Pairs a value with its location the source code.
-#[derive(Encode, Decode)]
-pub struct Located<T> {
-    pub value : T,
-    pub loc : Location,
-}
-
-impl<T : fmt::Debug> fmt::Debug for Located<T> {
-    fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
-        self.value.fmt(out)
-    }
-}
-
 /// Points to a file location within the current package/translation unit.
 #[derive(Clone, Copy, PartialEq, Eq, Encode, Decode)]
 pub struct Location {
@@ -43,6 +30,13 @@ impl Location {
         let (line, column) = file_meta.find_location(self.span.start);
         format!("{}:{}:{}", file_display, line, column)
     }
+}
+
+/// Pairs a value with its location in the source code.
+#[derive(Debug, Encode, Decode)]
+pub struct Located<T> {
+    pub value : T,
+    pub loc : Location,
 }
 
 /// Represents a span of bytes within a file.
@@ -123,5 +117,21 @@ impl Span {
 impl fmt::Debug for Span {
     fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
         write!(out, "[{}..{}]", self.start, self.end)
+    }
+}
+
+/// Pairs a value with its location in a file.
+#[derive(Debug, Encode, Decode)]
+pub struct Spanned<T> {
+    pub value : T,
+    pub span : Span,
+}
+
+impl<T> Spanned<T> {
+    pub(crate) fn into_located(self, file_id : FileId) -> Located<T> {
+        Located {
+            value : self.value,
+            loc : Location { span : self.span, file_id }
+        }
     }
 }
