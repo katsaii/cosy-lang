@@ -1,6 +1,6 @@
 use std::{ fmt, result };
 use crate::reporting::Colour;
-use crate::source::{ Location, FileManager };
+use crate::vfs::{ Location, ManifestFiles };
 
 /// A result type for unwinding diagnostic info.
 pub type Result<T> = result::Result<T, Diagnostic>;
@@ -28,7 +28,7 @@ impl Message {
     }
 
     /// Returns the contents of this message as a string.
-    pub fn show(&self, files : &FileManager) -> String {
+    pub fn show(&self, files : &ManifestFiles) -> String {
         let mut args = Vec::new();
         for arg in &self.args {
             args.push(arg.show(files));
@@ -103,12 +103,12 @@ pub enum TextFragment {
 
 impl TextFragment {
     /// Returns the contents of this text fragment as a string.
-    pub fn show<'a>(&'a self, files : &'a FileManager) -> &'a str {
+    pub fn show<'a>(&'a self, files : &'a ManifestFiles) -> &'a str {
         match self {
             Self::Text(x) => &x,
             Self::Code(location) => {
-                let file = files.get_file(location.file_id);
-                location.span.slice(file.get_src())
+                let src = files.get_src(location.file_id).unwrap();
+                location.span.slice(src)
             }
         }
     }

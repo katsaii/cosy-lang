@@ -2,7 +2,7 @@ pub mod log;
 pub mod cli;
 
 use std::io;
-use crate::{ Session, source::FileManager };
+use crate::{ Session, vfs::ManifestFiles };
 use crate::error::{ Diagnostic, IssueStats };
 
 /// Any valid diagnostics renderer must satisfy this trait.
@@ -15,9 +15,9 @@ pub trait Renderer {
         sess : &Session,
     ) -> io::Result<()> {
         let issues = &sess.issues;
-        let files = &sess.files;
+        let files = sess.manifest.read_files()?;
         for diag in &issues.errors {
-            self.render_diagnostic(out, diag, files)?;
+            self.render_diagnostic(out, diag, &files)?;
         }
         if let Some(stats) = issues.error_stats() {
             self.render_stats(out, &stats)?;
@@ -30,7 +30,7 @@ pub trait Renderer {
         &mut self,
         out : &mut W,
         diag : &Diagnostic,
-        files : &FileManager,
+        files : &ManifestFiles,
     ) -> io::Result<()>;
 
     /// Responsible for for rendering all of the issues reported by a compiler

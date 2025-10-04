@@ -3,23 +3,25 @@
 pub mod ast;
 pub mod lex;
 
-use std::path::PathBuf;
+use std::path::{ PathBuf, Path };
 use lex::Token;
-use crate::source::{ Symbol, Span, Location, SourceRef, File, FileManager };
+use crate::source::{ Symbol, Span, Location, SourceRef, File };
+use crate::vfs::{ Manifest, FileData };
 use crate::error::{ IssueManager, Diagnostic };
+use crate::Session;
 
 struct Parser<'a> {
     issues : &'a mut IssueManager,
-    file : &'a File,
+    file : &'a FileData,
     lexer : lex::Lexer<'a>,
 }
 
 impl<'a> Parser<'a> {
     fn parse(
         issues : &'a mut IssueManager,
-        file : &'a File,
+        file : &'a FileData,
     ) -> ast::Node {
-        let lexer = lex::Lexer::new(file.get_src());
+        let lexer = lex::Lexer::new(&file.src);
         let mut parser = Self { issues, file, lexer };
         parser.parse_module_body()
     }
@@ -161,7 +163,7 @@ impl<'a> Parser<'a> {
     fn parse_expr_terminal(&mut self) -> Option<ast::Node> {
         if let Token::NumIntegral = self.lexer.peek() {
             let (span, _) = self.lexer.next();
-            let n_string = span.slice(self.file.get_src()).replace("_", "");
+            let n_string = span.slice(&self.file.src).replace("_", "");
             match n_string.parse::<u128>() {
                 Ok(n) => Some(ast::Node::NumIntegral(self.make_dbg(&span, n))),
                 Err(err) => {
@@ -174,7 +176,7 @@ impl<'a> Parser<'a> {
             }
         } else if let Token::NumRational = self.lexer.peek() {
             let (span, _) = self.lexer.next();
-            let n_string = span.slice(self.file.get_src()).replace("_", "");
+            let n_string = span.slice(&self.file.src).replace("_", "");
             Some(ast::Node::NumRational(self.make_dbg(&span, n_string)))
         } else if let Token::Bool(b) = self.lexer.peek() {
             let b = *b;
@@ -219,21 +221,22 @@ impl<'a> Parser<'a> {
 ///
 /// Any errors encountered whilst parsing are reported to `issues`.
 pub fn package_from_file(
-    issues : &mut IssueManager,
-    files : &mut FileManager,
-    file_path : PathBuf,
+    sess : &mut Session,
+    file_path : &Path,
 ) -> Option<(Symbol, ast::Node)> {
-    let file = match files.load(file_path) {
-        Ok(file_id) => files.get_file(file_id),
+    let file_data = match sess.manifest.load(file_path) {
+        Ok(ok) => ok,
         Err(err) => {
-            let diag = Diagnostic::from(err);
-            diag.report(issues);
+            Diagnostic::error()
+                .message(("failed to open package root `{}`", [file_path.display().into()]))
+                .note(("{}", [err.into()]))
+                .report(&mut sess.issues);
             return None;
         },
     };
-    let name = file.path.file_stem().unwrap().to_string_lossy().to_string();
+    let name = file_path.file_stem().unwrap().to_string_lossy().to_string();
     //let module_dir = file.path.parent().unwrap().to_path_buf();
-    let module = Parser::parse(issues, file);
+    let module = Parser::parse(&mut sess.issues, &file_data);
     // TODO :: multiple-files/incremental compilation
     Some((name, module))
 }

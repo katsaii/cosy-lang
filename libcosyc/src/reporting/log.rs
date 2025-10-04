@@ -1,5 +1,5 @@
 use std::io;
-use crate::{ source::FileManager, error::Diagnostic };
+use crate::{ vfs::ManifestFiles, error::Diagnostic };
 use crate::reporting::{ Renderer, PrettyPrinter, Colour, Style };
 
 /// Renders diagnostic information on a single line:
@@ -17,7 +17,7 @@ impl Renderer for LogRenderer {
         &mut self,
         out : &mut W,
         diag : &Diagnostic,
-        files : &FileManager,
+        files : &ManifestFiles,
     ) -> io::Result<()> {
         self.0.write_style_fg(out, diag.severity.as_colour())?;
         self.0.write_style(out, Style::Bold)?;

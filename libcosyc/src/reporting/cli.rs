@@ -1,5 +1,5 @@
 use std::{ io, cmp };
-use crate::source::FileManager;
+use crate::vfs::ManifestFiles;
 use crate::error::{ Diagnostic, Label, Note, Message, IssueStats };
 use crate::reporting::{ Renderer, PrettyPrinter, Colour, Style };
 
@@ -14,7 +14,7 @@ impl Renderer for CliRenderer {
         &mut self,
         out : &mut W,
         diag : &Diagnostic,
-        files : &FileManager,
+        files : &ManifestFiles,
     ) -> io::Result<()> {
         let colour = diag.severity.as_colour();
         self.0.write_style_fg(out, colour)?;
@@ -68,12 +68,13 @@ impl CliRenderer {
         &mut self,
         out : &mut W,
         label : &Label,
-        files : &FileManager,
+        files : &ManifestFiles,
         highlight : Colour,
         highlight_char : char,
     ) -> io::Result<()> {
-        let file = files.get_file(label.location.file_id);
-        let (start, end) = file.find_location_span(&label.location.span);
+        let file_meta = files.get_meta(label.location.file_id).unwrap();
+        let file_src = files.get_src(label.location.file_id).unwrap();
+        let (start, end) = file_meta.find_location_span(&label.location.span);
         let start_line_n = &start.0.to_string();
         let end_line_n = &end.0.to_string();
         let margin = end_line_n.len();
@@ -86,9 +87,9 @@ impl CliRenderer {
         self.0.writeln(out)?;
         // render span
         self.render_margin(out, margin, &start_line_n)?;
-        let start_line = file.find_line_span(start.0).unwrap();
+        let start_line = file_meta.find_line_span(start.0).unwrap();
         self.0.skip(out, 2)?; // leave 2 spaces for multi-line spans
-        self.0.write(out, start_line.slice(file.get_src()))?;
+        self.0.write(out, start_line.slice(file_src))?;
         self.0.writeln(out)?;
         if start.0 == end.0 {
             // render single-line span
@@ -100,7 +101,7 @@ impl CliRenderer {
             self.0.write_style(out, Style::Bold)?;
             self.0.repeat(out, length, highlight_char)?;
         } else {
-            let end_line = file.find_line_span(end.0).unwrap();
+            let end_line = file_meta.find_line_span(end.0).unwrap();
             // render multi-line span
             let offset_start = start.1;
             let offset_end = safe_sub(end.1, 1);
@@ -116,7 +117,7 @@ impl CliRenderer {
             self.0.write_style(out, Style::Bold)?;
             self.0.write(out, "| ")?;
             self.0.clear_style(out)?;
-            self.0.write(out, end_line.slice(file.get_src()))?;
+            self.0.write(out, end_line.slice(file_src))?;
             self.0.writeln(out)?;
             self.render_margin_end(out, margin)?; // end underline
             self.0.write_style_fg(out, highlight)?;
@@ -163,7 +164,7 @@ impl CliRenderer {
         &mut self,
         out : &mut W,
         messages : &[Message],
-        files : &FileManager,
+        files : &ManifestFiles,
     ) -> io::Result<()> {
         self.0.indent_stash();
         let mut first = true;
@@ -182,7 +183,7 @@ impl CliRenderer {
         &mut self,
         out : &mut W,
         note : &Note,
-        files : &FileManager,
+        files : &ManifestFiles,
     ) -> io::Result<()> {
         self.0.write_style_fg(out, Colour::BrightGreen)?;
         self.0.write_style(out, Style::Bold)?;

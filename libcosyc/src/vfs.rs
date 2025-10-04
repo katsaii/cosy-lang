@@ -208,6 +208,17 @@ impl fmt::Debug for Location {
     }
 }
 
+impl Location {
+    /// Returns the filename a source location points to in the format
+    /// `dirname/filename.ext:line:column`.
+    pub fn show_path(&self, files : &ManifestFiles) -> String {
+        let file_meta = files.get_meta(self.file_id).unwrap();
+        let file_display = file_meta.path.display();
+        let (line, column) = file_meta.find_location(self.span.start);
+        format!("{}:{}:{}", file_display, line, column)
+    }
+}
+
 /// Represents a span of bytes within a file.
 #[derive(Clone, Copy, PartialEq, Eq, Encode, Decode)]
 pub struct Span {

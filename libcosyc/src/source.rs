@@ -4,8 +4,6 @@ use path_clean::PathClean;
 use pathdiff::diff_paths;
 use bincode::{ Encode, Decode };
 
-use crate::error;
-
 pub use crate::vfs::{ FileId, Span, Location, LineAndColumn };
 
 /// Pairs a value with its location the source code.
@@ -18,17 +16,6 @@ pub struct SourceRef<T> {
 impl<T : fmt::Debug> fmt::Debug for SourceRef<T> {
     fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
         self.value.fmt(out)
-    }
-}
-
-impl Location {
-    /// Returns the filename a source location points to in the format
-    /// `dirname/filename.ext:line:column`.
-    pub fn show_path(&self, files : &FileManager) -> String {
-        let file_meta = files.get_file(self.file_id);
-        let file_display = file_meta.path.display();
-        let (line, column) = file_meta.find_location(self.span.start);
-        format!("{}:{}:{}", file_display, line, column)
     }
 }
 
@@ -165,6 +152,7 @@ pub fn resolve_relative_path(path : &Path) -> Option<PathBuf> {
     diff_paths(path, env::current_dir().ok()?)
 }
 
+/*
 /// Stores information about files managed by the compiler. Avoids having to
 /// pass around lots of `Rc<File>` instances around.
 ///
@@ -219,6 +207,7 @@ impl FileManager {
         &self.files[file]
     }
 }
+*/
 
 /// An owned section of source code, such as a string literal after resolving
 /// escape codes.
