@@ -1,6 +1,6 @@
 mod token;
 
-use std::{ mem, str::CharIndices };
+use std::{ mem, str::CharIndices, path::Path };
 
 use crate::source::Span;
 
@@ -205,14 +205,14 @@ const MAX_SRC_LENGTH : usize = 64;
 
 /// Pretty prints a sequence of tokens for debugging purposes.
 pub fn debug_print_tokens(
+    path : &Path,
     src : &str,
     lines : &[Span],
     token_spans : &[TokenSpan]
 ) {
-    println!("row:col\t\ttoken\t\tspan\n");
     for (span, token) in token_spans {
         let (line, col) = Span::find_location(lines, span.start);
-        print!("{}:{}\t\t{:?}\t\t{:?}\t\t", line, col, token, span);
+        print!("{}:{}:{}\t{:?}\t{:?}\t\t", path.display(), line, col, span, token);
         let token_str = span.slice(&src);
         if token_str.len() > MAX_SRC_LENGTH {
             println!("...");

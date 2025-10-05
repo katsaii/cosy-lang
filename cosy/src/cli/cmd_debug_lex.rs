@@ -41,6 +41,6 @@ fn lex_session(sess : &mut Session, path : &Path) -> Option<()> {
             break;
         }
     }
-    lex::debug_print_tokens(src, &file_meta.lines, &tokens);
+    lex::debug_print_tokens(path, src, &file_meta.lines, &tokens);
     Some(())
 }

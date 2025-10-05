@@ -29,7 +29,7 @@ impl<'a> Ast2Hir<'a> {
 
     fn lower_module(&mut self, ast_node : &ast::Node) -> hir::Module {
         let items = Vec::new();
-        self.assert(ast_node, "expected block");
+        //self.assert(ast_node, "expected block");
         hir::Module { items }
     }
 }
