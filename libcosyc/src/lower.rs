@@ -1,4 +1,5 @@
 pub mod hir;
+pub mod casm;
 
 use crate::parse::ast;
 use crate::error::{ IssueManager, Diagnostic };
@@ -31,5 +32,28 @@ impl<'a> Ast2Hir<'a> {
         let items = Vec::new();
         //self.assert(ast_node, "expected block");
         hir::Module { items }
+    }
+}
+
+/// Responsible for converting HIR into Cosy ASM.
+pub struct Hir2Casm<'a> {
+    issues : &'a mut IssueManager,
+}
+
+impl<'a> Hir2Casm<'a> {
+    /// Lowers a collection of HIR into Cosy ASM, resolving inter-module symbol
+    /// linking.
+    ///
+    /// Writes any errors to `issues`.
+    pub fn lower(
+        issues : &'a mut IssueManager,
+        hir : &hir::Module
+    ) -> casm::Package {
+        let mut ctx = Self { issues };
+        ctx.lower_module(hir)
+    }
+
+    fn lower_module(&mut self, _hir : &hir::Module) -> casm::Package {
+        casm::Package
     }
 }

@@ -1,7 +1,7 @@
+mod cmd_build;
 mod cmd_debug_lex;
 mod cmd_debug_parse;
 mod cmd_debug_error;
-mod cmd_run;
 
 use std::{ cmp, env, io, io::IsTerminal, process::ExitCode };
 use clap::{ Parser, Subcommand, Args };
@@ -23,7 +23,7 @@ struct Cosyc {
 
 #[derive(Subcommand)]
 enum CosycCommand {
-    Run(cmd_run::Args),
+    Build(cmd_build::Args),
     #[command(subcommand)]
     Debug(CosycCommandDebug),
 }
@@ -40,7 +40,7 @@ pub(super) fn execute() -> ExitCode {
     let cosyc_args = Cosyc::parse();
     let mut reporter = ErrorReporter::new(cosyc_args.use_compact_errors, true);
     match cosyc_args.command {
-        CosycCommand::Run(args) => cmd_run::execute(&mut reporter, args),
+        CosycCommand::Build(args) => cmd_build::execute(&mut reporter, args),
         CosycCommand::Debug(debug_cmd) => match debug_cmd {
             CosycCommandDebug::Lex(args) => cmd_debug_lex::execute(&mut reporter, args),
             CosycCommandDebug::Parse(args) => cmd_debug_parse::execute(&mut reporter, args),
