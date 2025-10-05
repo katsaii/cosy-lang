@@ -1,1 +1,4 @@
 /target
+/llvm-project
+/llvm-build
+/build

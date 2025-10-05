@@ -3,6 +3,7 @@ use std::path::{ Path, PathBuf };
 use libcosyc::{ Session, error::Diagnostic };
 use libcosyc::parse::{ Parser, ast };
 use libcosyc::lower::{ Ast2Hir, hir, Hir2Casm, casm };
+use libcosyc::r#gen::llvm;
 
 /// Builds the package and immediately runs its entrypoint.
 #[derive(super::Args)]
@@ -61,6 +62,7 @@ fn build_package(sess : &mut Session, _name : String, entry : PathBuf) -> Option
     println!("HIR:\n{:?}", hir);
     let casm = build_casm_package(sess, &hir)?;
     println!("CASM:\n{:?}", casm);
+    build_llvm_target(sess, &casm)?;
     Some(())
 }
 
@@ -92,4 +94,12 @@ fn build_casm_package(sess : &mut Session, hir : &hir::Module) -> Option<casm::P
         return None;
     }
     Some(casm)
+}
+
+fn build_llvm_target(sess : &mut Session, casm : &casm::Package) -> Option<()> {
+    llvm::emit_to_file(&mut sess.issues, casm, "cosy.bc".as_ref());
+    if sess.issues.has_errors() {
+        return None;
+    }
+    Some(())
 }

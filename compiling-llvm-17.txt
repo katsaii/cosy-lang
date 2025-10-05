@@ -1,0 +1,24 @@
+1) Clone a v17 release (in this case, version 17.0.6):
+
+    git clone --depth 1 --branch llvmorg-17.0.6 git@github.com:llvm/llvm-project.git
+
+
+2) Create an `llvm-build` directory and `cd` into it:
+
+    mkdir llvm-build/
+    cd llvm-build/
+
+
+3) Tell `cmake` to compile LLVM in release mode:
+
+    cmake ../llvm-project/llvm/ -DCMAKE_BUILD_TYPE=Release
+
+
+4) Compile in parallel (in this case, use 16 processors):
+
+    env CMAKE_BUILD_PARALLEL_LEVEL=16 cmake --build .
+
+
+5) (OPTIONAL) Install the build to your PATH (may require `sudo`):
+
+    cmake --build . --target install

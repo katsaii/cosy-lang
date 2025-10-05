@@ -3,5 +3,6 @@ mod cli;
 use std::process::ExitCode;
 
 pub fn main() -> ExitCode {
-    cli::execute()
+    cli::execute();
+    ExitCode::SUCCESS
 }

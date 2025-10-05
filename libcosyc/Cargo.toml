@@ -4,6 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-pathdiff = "0.2.1"
-path-clean = "0.1.0"
 bincode = "2.0.1"
+inkwell = { version = "0.6.0", features = ["llvm17-0"] }
