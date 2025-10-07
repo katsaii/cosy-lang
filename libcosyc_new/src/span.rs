@@ -104,9 +104,9 @@ impl SourceMap {
     }
 }
 
-pub enum GetFileResult {
+pub enum GetFileResult<'path> {
     NotInManifest,
-    Ok(Arc<SourceFile>),
+    Ok(&'path Path, Arc<SourceFile>),
     IoErr(io::Error),
 }
 
@@ -118,19 +118,22 @@ impl SourceMap {
     /// Returns `NotInManifest` if `file_id` is not in the manifest.
     /// Returns `io::Error` if there was an error loading the source file, e.g.
     /// the file has been deleted.
-    pub fn get_existing_file(&self, file_id : FileId) -> GetFileResult {
+    pub fn get_existing_file<'path>(
+        &'path self,
+        file_id : FileId,
+    ) -> GetFileResult<'path> {
+        let path = match self.manifest.id_2_file.get(&file_id) {
+            Some(ManifestFile { path, .. }) => path,
+            None => return GetFileResult::NotInManifest,
+        };
         if let Some(file) = self.files.borrow().get(&file_id) {
-            GetFileResult::Ok(file.to_owned())
+            GetFileResult::Ok(path, file.to_owned())
         } else {
-            let path = match self.manifest.id_2_file.get(&file_id) {
-                Some(ManifestFile { path, .. }) => path,
-                None => return GetFileResult::NotInManifest,
-            };
             let src = match fs::read_to_string(path) {
                 Ok(ok) => ok,
                 Err(err) => return GetFileResult::IoErr(err),
             };
-            GetFileResult::Ok(self.add_file(file_id, src))
+            GetFileResult::Ok(path, self.add_file(file_id, src))
         }
     }
 }
@@ -258,18 +261,38 @@ impl fmt::Debug for Location {
     }
 }
 
-/*
 impl Location {
     /// Returns the filename a source location points to in the format
-    /// `dirname/filename.ext:line:column`.
-    pub fn show_path(&self, files : &Manifest) -> String {
-        let file_meta = files.get(self.file_id).unwrap();
-        let file_display = file_meta.path.display();
-        let (line, column) = file_meta.find_location(self.span.start);
-        format!("{}:{}:{}", file_display, line, column)
+    /// `filename.ext:line:column`.
+    pub fn show_path(&self, source_map : &SourceMap) -> String {
+        match source_map.get_existing_file(self.file_id) {
+            GetFileResult::Ok(path, file) => {
+                let (line, column) = file.find_line_and_col(self.span.start);
+                format!("{}:{}:{}", path.display(), line, column)
+            },
+            _ => format!("{:?}", self),
+        }
+    }
+
+    /// Copies the contents of this location from the source file to a
+    /// desination string.
+    ///
+    /// Returns the number of bytes written `dest`.
+    pub fn push_src(
+        &self,
+        source_map : &SourceMap,
+        dest : &mut String
+    ) -> usize {
+        match source_map.get_existing_file(self.file_id) {
+            GetFileResult::Ok(_, file) => {
+                let src_str = self.span.slice(&file.src);
+                dest.push_str(src_str);
+                src_str.len()
+            },
+            _ => 0,
+        }
     }
 }
-*/
 
 /// Pairs a value with its location in the source code.
 #[derive(Debug, bincode::Encode, bincode::Decode)]
@@ -285,6 +308,12 @@ pub struct Span {
     pub start : usize,
     /// The ending byte of the span (exclusive).
     pub end : usize,
+}
+
+impl fmt::Debug for Span {
+    fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
+        write!(out, "[{}..{}]", self.start, self.end)
+    }
 }
 
 impl Span {
@@ -331,12 +360,6 @@ impl Span {
         let start = self.start + lpad;
         let end = self.end - rpad;
         Span::new(start..end)
-    }
-}
-
-impl fmt::Debug for Span {
-    fn fmt(&self, out : &mut fmt::Formatter) -> fmt::Result {
-        write!(out, "[{}..{}]", self.start, self.end)
     }
 }
 
