@@ -205,6 +205,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "libcosyc_new"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+]
+
+[[package]]
 name = "llvm-sys"
 version = "170.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
