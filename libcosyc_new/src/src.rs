@@ -47,20 +47,20 @@ fn str_get_lines(src : &str) -> Vec<Span> {
 }
 
 /// Maps from virtual file ids to source files.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct SourceMap {
     manifest : Manifest,
     files : RefCell<HashMap<FileId, Arc<SourceFile>>>,
 }
 
-#[derive(Default, bincode::Encode, bincode::Decode)]
+#[derive(Debug, Default, bincode::Encode, bincode::Decode)]
 struct Manifest {
     path_2_id : HashMap<PathBuf, FileId>,
     id_2_file : HashMap<FileId, ManifestFile>,
     next_id : FileId,
 }
 
-#[derive(bincode::Encode, bincode::Decode)]
+#[derive(Debug, bincode::Encode, bincode::Decode)]
 struct ManifestFile {
     path : PathBuf,
     hash : FileHash,
@@ -69,30 +69,60 @@ struct ManifestFile {
 impl SourceMap {
     /// Creates a new blank source map.
     pub fn new() -> SourceMap { SourceMap::default() }
+}
 
+#[derive(Debug)]
+pub enum LoadManifestResult {
+    Ok(SourceMap),
+    ErrIo(io::Error),
+    ErrBincode(bincode::error::DecodeError),
+}
+
+impl SourceMap {
     /// Attempts to load a source map from a manifest file if one exists at the
     /// given path.
     ///
     /// Returns `None` if the manifest file could not be loaded, or doesn't exist.
-    pub fn load_from_path(path : &Path) -> Option<SourceMap> {
+    pub fn load_from_path(path : &Path) -> LoadManifestResult {
         let config = bincode::config::standard();
-        let mut file = fs::File::open(path).ok()?;
-        let manifest = bincode::decode_from_std_read(&mut file, config).ok()?;
-        Some(SourceMap { manifest, ..Default::default() })
+        let mut file = match fs::File::open(path) {
+            Ok(ok) => ok,
+            Err(err) => return LoadManifestResult::ErrIo(err),
+        };
+        let manifest : Manifest = match bincode::decode_from_std_read(
+            &mut file, config
+        ) {
+            Ok(ok) => ok,
+            Err(err) => return LoadManifestResult::ErrBincode(err),
+        };
+        LoadManifestResult::Ok(SourceMap { manifest, ..Default::default() })
     }
+}
 
+#[derive(Debug)]
+pub enum SaveManifestResult {
+    Ok,
+    ErrIo(io::Error),
+    ErrBincode(bincode::error::EncodeError),
+}
+
+impl SourceMap {
     /// Attempts to write the manifest of this source map to a file at the
     /// given path.
     ///
     /// Returns `true` if this was successful, and `false` otherwise.
-    pub fn save_to_path(&self, path : &Path) -> bool {
-        fn inner_(manifest : &Manifest, path : &Path) -> Option<()> {
-            let config = bincode::config::standard();
-            let mut file = fs::File::open(path).ok()?;
-            bincode::encode_into_std_write(manifest, &mut file, config).ok()?;
-            Some(())
+    pub fn save_to_path(&self, path : &Path) -> SaveManifestResult {
+        let config = bincode::config::standard();
+        let mut file = match fs::File::create(path) {
+            Ok(ok) => ok,
+            Err(err) => return SaveManifestResult::ErrIo(err),
+        };
+        if let Err(err) = bincode::encode_into_std_write(
+            &self.manifest, &mut file, config
+        ) {
+            return SaveManifestResult::ErrBincode(err);
         }
-        inner_(&self.manifest, path).is_some()
+        SaveManifestResult::Ok
     }
 
     fn add_file(&self, file_id : FileId, src : String) -> Arc<SourceFile> {
@@ -104,10 +134,11 @@ impl SourceMap {
     }
 }
 
+#[derive(Debug)]
 pub enum GetFileResult<'path> {
-    NotInManifest,
     Ok(&'path Path, Arc<SourceFile>),
-    IoErr(io::Error),
+    ErrNotInManifest,
+    ErrIo(io::Error),
 }
 
 impl SourceMap {
@@ -124,24 +155,25 @@ impl SourceMap {
     ) -> GetFileResult<'path> {
         let path = match self.manifest.id_2_file.get(&file_id) {
             Some(ManifestFile { path, .. }) => path,
-            None => return GetFileResult::NotInManifest,
+            None => return GetFileResult::ErrNotInManifest,
         };
         if let Some(file) = self.files.borrow().get(&file_id) {
             GetFileResult::Ok(path, file.to_owned())
         } else {
             let src = match fs::read_to_string(path) {
                 Ok(ok) => ok,
-                Err(err) => return GetFileResult::IoErr(err),
+                Err(err) => return GetFileResult::ErrIo(err),
             };
             GetFileResult::Ok(path, self.add_file(file_id, src))
         }
     }
 }
 
+#[derive(Debug)]
 pub enum LoadFileResult {
-    Unchanged,
-    NewOrModified(Arc<SourceFile>),
-    IoErr(io::Error),
+    Ok(Arc<SourceFile>),
+    OkUnchanged(FileId),
+    ErrIo(io::Error),
 }
 
 impl SourceMap {
@@ -160,18 +192,18 @@ impl SourceMap {
                 // the same file twice, this should be a rare path
                 let hash = str_get_hash(&file.src);
                 if cache.hash == hash {
-                    return LoadFileResult::Unchanged;
+                    return LoadFileResult::OkUnchanged(*file_id);
                 }
                 cache.hash = hash;
                 file.to_owned()
             } else {
                 let src = match fs::read_to_string(path) {
                     Ok(ok) => ok,
-                    Err(err) => return LoadFileResult::IoErr(err),
+                    Err(err) => return LoadFileResult::ErrIo(err),
                 };
                 let hash = str_get_hash(&src);
                 if cache.hash == hash {
-                    return LoadFileResult::Unchanged;
+                    return LoadFileResult::OkUnchanged(*file_id);
                 }
                 cache.hash = hash;
                 self.add_file(*file_id, src)
@@ -180,7 +212,7 @@ impl SourceMap {
             // new file
             let src = match fs::read_to_string(path) {
                 Ok(ok) => ok,
-                Err(err) => return LoadFileResult::IoErr(err),
+                Err(err) => return LoadFileResult::ErrIo(err),
             };
             let file_id = self.manifest.next_id;
             self.manifest.next_id += 1;
@@ -192,11 +224,12 @@ impl SourceMap {
             self.manifest.path_2_id.insert(path.to_owned(), file_id);
             self.add_file(file_id, src)
         };
-        LoadFileResult::NewOrModified(file)
+        LoadFileResult::Ok(file)
     }
 }
 
 /// Stores information about a currently loaded source file.
+#[derive(Debug)]
 pub struct SourceFile {
     pub id : FileId,
     /// The complete source code.

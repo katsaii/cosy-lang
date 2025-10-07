@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 libcosyc = { path = "../libcosyc" }
+libcosyc_new = { path = "../libcosyc_new" }
 
 [dependencies.clap]
 version = "4.5.29"
