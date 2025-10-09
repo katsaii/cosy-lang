@@ -418,7 +418,6 @@ pub(crate) fn find_line_and_col(
     (line, pos - line_span.start + 1)
 }
 
-
 /// Represents a complete message that may contain source information.
 pub struct Message {
     template : &'static str,
@@ -446,7 +445,26 @@ impl Message {
         source_map : &SourceMap,
         dest : &mut String
     ) -> usize {
-        0 // TODO :: formatting
+        let mut arg_n = 0;
+        let mut template_slice = self.template;
+        let mut bytes = 0;
+        while let Some(end) = template_slice.find("{}") {
+            let prefix = &template_slice[..end];
+            bytes += prefix.len();
+            dest.push_str(prefix);
+            template_slice = &template_slice[end + 2..];
+            // write arg
+            if let Some(arg) = self.args.get(arg_n) {
+                bytes += arg.write_to_string(source_map, dest);
+            } else {
+                bytes += 2;
+                dest.push_str("{}");
+            }
+            arg_n += 1;
+        }
+        bytes += template_slice.len();
+        dest.push_str(template_slice);
+        bytes
     }
 }
 
