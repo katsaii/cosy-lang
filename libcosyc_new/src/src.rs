@@ -310,8 +310,8 @@ impl Location {
     /// Copies the contents of this location from the source file to a
     /// desination string.
     ///
-    /// Returns the number of bytes written `dest`.
-    pub fn push_src(
+    /// Returns the number of bytes written to `dest`.
+    pub fn write_to_string(
         &self,
         source_map : &SourceMap,
         dest : &mut String
@@ -417,3 +417,119 @@ pub(crate) fn find_line_and_col(
     let line_span = &lines[line - 1];
     (line, pos - line_span.start + 1)
 }
+
+
+/// Represents a complete message that may contain source information.
+pub struct Message {
+    template : &'static str,
+    args : Vec<TextFragment>,
+}
+
+impl From<&'static str> for Message {
+    fn from(template : &'static str) -> Message {
+        Message { template, args : Vec::new() }
+    }
+}
+
+impl<I : IntoIterator<Item=TextFragment>> From<(&'static str, I)> for Message {
+    fn from((template, args) : (&'static str, I)) -> Message {
+        Message { template, args : args.into_iter().collect() }
+    }
+}
+
+impl Message {
+    /// Copies the contents of this message to a desination string.
+    ///
+    /// Returns the number of bytes written to `dest`.
+    pub fn write_to_string(
+        &self,
+        source_map : &SourceMap,
+        dest : &mut String
+    ) -> usize {
+        0 // TODO :: formatting
+    }
+}
+
+/// Represents a string or piece of source code.
+#[derive(PartialEq, Eq)]
+pub enum TextFragment {
+    Text(String),
+    Code(Location),
+}
+
+impl From<Location> for TextFragment {
+    fn from(location : Location) -> TextFragment {
+        TextFragment::Code(location)
+    }
+}
+
+impl<S : ToString> From<S> for TextFragment {
+    fn from(s : S) -> TextFragment {
+        TextFragment::Text(s.to_string())
+    }
+}
+
+impl TextFragment {
+    /// Copies the contents of this text fragment to a desination string.
+    ///
+    /// Returns the number of bytes written to `dest`.
+    pub fn write_to_string(
+        &self,
+        source_map : &SourceMap,
+        dest : &mut String
+    ) -> usize {
+        match self {
+            TextFragment::Text(src) => {
+                dest.push_str(&src);
+                src.len()
+            },
+            TextFragment::Code(location) => {
+                location.write_to_string(source_map, dest)
+            },
+        }
+    }
+}
+/*
+fn runtime_fmt(template : &str, args : &[&str]) -> String {
+    fn get_arg<'a>(args : &'a [&'a str], pos : usize) -> &'a str {
+        args.get(pos).map(|x| x as &str).unwrap_or_default()
+    }
+    fn write_arg(sb : &mut String, s : &str) {
+        sb.push_str(s);
+    }
+    let mut sb = String::new();
+    let mut arg_pos = 0;
+    let mut prev = '\0';
+    let mut skip_close_paren = false;
+    for next in template.chars() {
+        match (prev, next) {
+            (x@'{', '{') | (x@'}', '}') => sb.push(x),
+            ('{', '}') => {
+                sb.pop(); // pop the `{` character
+                let arg = get_arg(args, arg_pos);
+                write_arg(&mut sb, arg);
+                arg_pos += 1;
+            },
+            ('{', '*') => {
+                sb.pop(); // pop the `{` character
+                for i in arg_pos..args.len() {
+                    if i > arg_pos {
+                        sb.push_str(", ");
+                    }
+                    let arg = get_arg(args, i);
+                    write_arg(&mut sb, arg);
+                }
+                skip_close_paren = true;
+            },
+            (_, x) => {
+                if !skip_close_paren || x != '}' {
+                    skip_close_paren = false;
+                    sb.push(x)
+                }
+            },
+        }
+        prev = next;
+    }
+    sb
+}
+*/

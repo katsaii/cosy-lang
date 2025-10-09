@@ -61,6 +61,7 @@ impl PrettyPrinter {
     }
 
     /// Sets the current decoration any following text should be written in.
+    ///
     /// Does nothing if `use_colour` is false.
     pub fn write_style<W : io::Write, St : Into<Style>>(
         &mut self,
@@ -99,7 +100,9 @@ impl PrettyPrinter {
         out : &mut W,
     ) -> io::Result<()> {
         if self.do_indent {
-            write!(out, "{}", " ".repeat(self.indent))?;
+            for _ in 0..self.indent {
+                write!(out, " ")?;
+            }
             self.column += self.indent;
             self.do_indent = false;
         }
