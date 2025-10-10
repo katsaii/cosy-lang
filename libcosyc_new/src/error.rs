@@ -82,7 +82,7 @@ pub struct Diagnostic {
     /// The severity of this error.
     pub severity : Severity,
     /// A brief description of the error.
-    pub messages : Vec<Message>,
+    pub message : Option<Message>,
     /// Used to discover the line and column numbers of code which directly
     /// caused the error.
     pub primary_labels : Vec<Label>,
@@ -131,8 +131,8 @@ impl Diagnostic {
 
     /// Inserts a new description for this error message.
     pub fn message<M : Into<Message>>(mut self, message : M) -> Diagnostic {
-        let message = message.into();
-        self.messages.push(message);
+        assert!(self.message.is_none(), "cannot have more than one message in diagnostic");
+        self.message = Some(message.into());
         self
     }
 
