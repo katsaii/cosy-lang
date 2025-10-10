@@ -176,9 +176,9 @@ impl From<Location> for Label {
     }
 }
 
-impl<M : Into<Message>> From<(Location, M)> for Label {
-    fn from((location, caption) : (Location, M)) -> Label {
-        Label { location, caption : Some(caption.into()) }
+impl From<(Location, Message)> for Label {
+    fn from((location, caption) : (Location, Message)) -> Label {
+        Label { location, caption : Some(caption) }
     }
 }
 
