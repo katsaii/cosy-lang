@@ -36,7 +36,7 @@ impl Session {
         let result = if use_compact_errors {
             log::write_errors(&mut printer, &mut stderr, &self.files, &self.issues)
         } else {
-            unimplemented!()
+            cli::write_errors(&mut printer, &mut stderr, &self.files, &self.issues)
         };
         if let Err(err) = result {
             eprintln!("UNEXPECTED ERROR WHEN REPORTING ERRORS:\n{}", err);

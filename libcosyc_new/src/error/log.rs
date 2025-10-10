@@ -9,9 +9,6 @@ use crate::pretty::{ PrettyPrinter, Colour, Decoration, Style };
 /// ```txt
 /// error: message >>> file1.cy:row:col, file2.cy:row:col
 /// ```
-///
-/// Uses coloured text if the output stream supports it. Otherwise, the
-/// output will just be monochrome.
 pub fn write_errors<W : io::Write>(
     printer : &mut PrettyPrinter,
     out : &mut W,

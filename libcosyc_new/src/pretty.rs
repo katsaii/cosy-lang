@@ -60,6 +60,31 @@ impl PrettyPrinter {
         Ok(())
     }
 
+    /// Writes a string to the output stream `n`-many times.
+    pub fn repeat<W : io::Write>(
+        &mut self,
+        out : &mut W,
+        n : usize,
+        text : &str,
+    ) -> io::Result<()> {
+        for _ in 0..n {
+            self.write(out, text)?;
+        }
+        Ok(())
+    }
+
+    /// Writes a space character to the output stream `n`-many times.
+    pub fn skip<W : io::Write>(
+        &mut self,
+        out : &mut W,
+        n : usize,
+    ) -> io::Result<()> {
+        for _ in 0..n {
+            self.write(out, " ")?;
+        }
+        Ok(())
+    }
+
     /// Sets the current decoration any following text should be written in.
     ///
     /// Does nothing if `use_colour` is false.
@@ -200,7 +225,7 @@ impl Decoration {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Style {
     decoration : Option<Decoration>,
     bg : Option<Colour>,

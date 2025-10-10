@@ -30,10 +30,7 @@ impl IssueManager {
     }
 
     /// Returns the statistics for the number of errors that occurred.
-    pub fn error_stats(&self) -> Option<IssueStats> {
-        if !self.has_messages() {
-            return None;
-        }
+    pub fn error_stats(&self) -> IssueStats {
         let mut max_severity = Severity::Warning;
         let mut counts = [0, 0, 0, 0];
         for error in &self.errors {
@@ -47,12 +44,12 @@ impl IssueManager {
                 max_severity = severity.clone();
             }
         }
-        Some(IssueStats {
+        IssueStats {
             max_severity,
             warnings : counts[1],
             errors : counts[2],
             bugs : counts[3],
-        })
+        }
     }
 }
 
