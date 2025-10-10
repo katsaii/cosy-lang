@@ -1,7 +1,31 @@
-use std::io;
+use std::{ env, io, io::IsTerminal };
+
+/// Creates a new pretty printer that writes to standard error.
+pub fn from_env(use_colour : bool) -> PrettyPrinter<io::Stderr> {
+    let stderr = io::stderr();
+    let supports_colour = 'blk: {
+        if !stderr.is_terminal() {
+            break 'blk false;
+        }
+        if let Ok(val) = env::var("CLICOLOR_FORCE") {
+            if val != "0" {
+                break 'blk true;
+            }
+        }
+        if env::var("NO_COLOR").is_ok() {
+            break 'blk false;
+        }
+        if let Ok(val) = env::var("CLICOLOR_FORCE") {
+            break 'blk val != "0";
+        }
+        true
+    };
+    PrettyPrinter::new(stderr, supports_colour && use_colour)
+}
 
 /// Assists with pretty printing tasks.
-pub struct PrettyPrinter {
+pub struct PrettyPrinter<W : io::Write> {
+    out : W,
     column : usize,
     indent : usize,
     indent_stack : Vec<usize>,
@@ -9,49 +33,40 @@ pub struct PrettyPrinter {
     use_colour : bool,
 }
 
-impl Default for PrettyPrinter {
-    fn default() -> Self {
+impl<W : io::Write> PrettyPrinter<W> {
+    pub fn new(out : W, use_colour : bool) -> Self {
         Self {
+            out,
             column : 0,
             indent : 0,
             indent_stack : Vec::new(),
             do_indent : true,
-            use_colour : false,
+            use_colour,
         }
-    }
-}
-
-impl PrettyPrinter {
-    pub fn new(use_colour : bool) -> Self {
-        Self { use_colour, ..Default::default() }
     }
 
     /// Writes a string to the output stream, sanitising any escape codes.
-    pub fn write<W : io::Write>(
-        &mut self,
-        out : &mut W,
-        text : &str,
-    ) -> io::Result<()> {
+    pub fn write(&mut self, text : &str) -> io::Result<()> {
         // TODO :: improve this so it doesn't write character-by-character
-        self.ensure_indented(out)?;
+        self.ensure_indented()?;
         let mut chr_prev = '\0';
         for chr in text.chars() {
             if chr == '\n' && chr_prev == '\r' {
                 // skip this line break
             } else if matches!(chr, '\n' | '\r') {
-                writeln!(out)?;
+                writeln!(self.out)?;
                 self.column = 0;
                 self.do_indent = true;
             } else if matches!(chr, '\'' | '"' | '\\') {
-                write!(out, "{}", chr)?;
+                write!(self.out, "{}", chr)?;
                 self.column += 1;
             } else if chr.is_whitespace() {
-                write!(out, " ")?;
+                write!(self.out, " ")?;
                 self.column += 1;
             } else {
-                self.ensure_indented(out)?;
+                self.ensure_indented()?;
                 for chr_escaped in chr.escape_debug() {
-                    write!(out, "{}", chr_escaped)?;
+                    write!(self.out, "{}", chr_escaped)?;
                     self.column += 1;
                 }
             }
@@ -61,36 +76,27 @@ impl PrettyPrinter {
     }
 
     /// Writes a string to the output stream `n`-many times.
-    pub fn repeat<W : io::Write>(
-        &mut self,
-        out : &mut W,
-        n : usize,
-        text : &str,
-    ) -> io::Result<()> {
+    pub fn repeat(&mut self, n : usize, text : &str) -> io::Result<()> {
         for _ in 0..n {
-            self.write(out, text)?;
+            self.write(text)?;
         }
         Ok(())
     }
 
     /// Writes a space character to the output stream `n`-many times.
-    pub fn skip<W : io::Write>(
-        &mut self,
-        out : &mut W,
-        n : usize,
-    ) -> io::Result<()> {
+    pub fn skip(&mut self, n : usize) -> io::Result<()> {
         for _ in 0..n {
-            self.write(out, " ")?;
+            write!(self.out, " ")?;
         }
+        self.column += n;
         Ok(())
     }
 
     /// Sets the current decoration any following text should be written in.
     ///
     /// Does nothing if `use_colour` is false.
-    pub fn write_style<W : io::Write, St : Into<Style>>(
+    pub fn write_style<St : Into<Style>>(
         &mut self,
-        out : &mut W,
         style : St,
     ) -> io::Result<()> {
         if !self.use_colour {
@@ -98,35 +104,32 @@ impl PrettyPrinter {
         }
         match style.into() {
             Style { decoration : Some(decoration), fg : Some(fg), bg : Some(bg) }
-                => write!(out, "\x1B[{};{};{}m",
+                => write!(self.out, "\x1B[{};{};{}m",
                     decoration as usize,
                     fg as usize,
                     bg as usize + 10,
                 )?,
             Style { decoration, fg, bg } => {
-                write!(out, "\x1B[0")?;
+                write!(self.out, "\x1B[0")?;
                 if let Some(decoration) = decoration {
-                    write!(out, ";{}", decoration as usize)?;
+                    write!(self.out, ";{}", decoration as usize)?;
                 }
                 if let Some(fg) = fg {
-                    write!(out, ";{}", fg as usize)?;
+                    write!(self.out, ";{}", fg as usize)?;
                 }
                 if let Some(bg) = bg {
-                    write!(out, ";{}", bg as usize + 10)?;
+                    write!(self.out, ";{}", bg as usize + 10)?;
                 }
-                write!(out, "m")?;
+                write!(self.out, "m")?;
             }
         }
         Ok(())
     }
 
-    fn ensure_indented<W : io::Write>(
-        &mut self,
-        out : &mut W,
-    ) -> io::Result<()> {
+    fn ensure_indented(&mut self) -> io::Result<()> {
         if self.do_indent {
             for _ in 0..self.indent {
-                write!(out, " ")?;
+                write!(self.out, " ")?;
             }
             self.column += self.indent;
             self.do_indent = false;

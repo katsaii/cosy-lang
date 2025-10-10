@@ -14,7 +14,7 @@ pub fn main() -> ExitCode {
             .note("guh")
             .report(&mut sess.issues);
     }
-    sess.print_errors(false, true);
+    sess.write_errors_to_stderr(false, true);
 
     cli::execute();
     ExitCode::SUCCESS

@@ -10,31 +10,26 @@ fn safe_sub(lhs : usize, rhs : usize) -> usize {
 
 /// Renders diagnostic information in a pretty format.
 pub fn write_errors<W : io::Write>(
-    printer : &mut PrettyPrinter,
-    out : &mut W,
+    printer : &mut PrettyPrinter<W>,
     files : &SourceMap,
     issues : &IssueManager,
 ) -> io::Result<()> {
     let mut ctx = RendererCtx {
         p : printer, files, message_str : String::new(),
     };
-    ctx.write(out, issues)
+    ctx.write(issues)
 }
 
-struct RendererCtx<'p, 'src> {
-    p : &'p mut PrettyPrinter,
+struct RendererCtx<'p, 'src, W : io::Write> {
+    p : &'p mut PrettyPrinter<W>,
     files : &'src SourceMap,
     message_str : String,
 }
 
-impl RendererCtx<'_, '_> {
-    fn write<W : io::Write>(
-        &mut self,
-        out : &mut W,
-        issues : &IssueManager,
-    ) -> io::Result<()> {
+impl<W : io::Write> RendererCtx<'_, '_, W> {
+    fn write(&mut self, issues : &IssueManager) -> io::Result<()> {
         for diag in &issues.errors {
-            self.write_diagnostic(out, diag)?;
+            self.write_diagnostic(diag)?;
         }
         let stats = issues.error_stats();
         let stats_total = stats.total();
@@ -42,53 +37,46 @@ impl RendererCtx<'_, '_> {
             let stats_style = stats.max_severity
                 .as_colour()
                 .decorated(Decoration::Bold);
-            self.p.write_style(out, stats_style)?;
-            self.p.write(out, stats.max_severity.as_str())?;
-            self.p.write_style(out, Style::default())?;
-            self.p.write(out,
-                &format!(": displayed {} message(s)\n", stats_total)
-            )?;
+            self.p.write_style(stats_style)?;
+            self.p.write(stats.max_severity.as_str())?;
+            self.p.write_style(Style::default())?;
+            self.p.write(&format!(": displayed {} message(s)\n", stats_total))?;
         }
         Ok(())
     }
 
-    fn write_diagnostic<W : io::Write>(
-        &mut self,
-        out : &mut W,
-        diag : &Diagnostic,
-    ) -> io::Result<()> {
+    fn write_diagnostic(&mut self, diag : &Diagnostic) -> io::Result<()> {
         let diag_style = diag.severity.as_colour().decorated(Decoration::Bold);
-        self.p.write_style(out, diag_style)?;
-        self.p.write(out, diag.severity.as_str())?;
-        self.p.write_style(out, Style::default())?;
-        self.p.write(out, ": ")?;
+        self.p.write_style(diag_style)?;
+        self.p.write(diag.severity.as_str())?;
+        self.p.write_style(Style::default())?;
+        self.p.write(": ")?;
         // render message
         if let Some(message) = &diag.message {
             self.p.indent_stash();
-            self.p.write_style(out, Decoration::Bold)?;
-            self.write_message(out, message)?;
-            self.p.write_style(out, Style::default())?;
+            self.p.write_style(Decoration::Bold)?;
+            self.write_message(message)?;
+            self.p.write_style(Style::default())?;
             self.p.indent_pop();
         }
         // render labels
         for label in &diag.primary_labels {
-            self.write_label(out, label, diag_style, "^")?;
+            self.write_label(label, diag_style, "^")?;
         }
         for label in &diag.secondary_labels {
             let snd_style = Colour::BrightBlue.decorated(Decoration::Bold);
-            self.write_label(out, label, snd_style, "-")?;
+            self.write_label(label, snd_style, "-")?;
         }
         // render notes
         for note in &diag.notes {
-            self.write_note(out, note)?;
+            self.write_note(note)?;
         }
-        self.p.write(out, "\n\n")?;
+        self.p.write("\n\n")?;
         Ok(())
     }
 
-    fn write_label<W : io::Write>(
+    fn write_label(
         &mut self,
-        out : &mut W,
         label : &Label,
         highlight : Style,
         highlight_char : &'static str,
@@ -105,115 +93,98 @@ impl RendererCtx<'_, '_> {
         let end_line_n = &end.0.to_string();
         let margin = end_line_n.len();
         // render filename
-        self.p.write(out, "\n")?;
-        self.p.skip(out, margin)?;
-        self.p.write_style(out, Colour::BrightCyan)?;
-        self.p.write(out, ">>> ")?;
-        self.write_path(out, &label.location)?;
-        self.p.write_style(out, Style::default())?;
-        self.p.write(out, "\n")?;
+        self.p.write("\n")?;
+        self.p.skip(margin)?;
+        self.p.write_style(Colour::BrightCyan)?;
+        self.p.write(">>> ")?;
+        self.write_path(&label.location)?;
+        self.p.write_style(Style::default())?;
+        self.p.write("\n")?;
         // render span
-        self.write_label_margin(out, margin, &start_line_n)?;
+        self.write_label_margin(margin, &start_line_n)?;
         let start_line = file.find_line_span(start.0).unwrap();
-        self.p.skip(out, 2)?; // leave 2 spaces for multi-line spans
-        self.p.write(out, start_line.slice(file_src))?;
-        self.p.write(out, "\n")?;
+        self.p.skip(2)?; // leave 2 spaces for multi-line spans
+        self.p.write(start_line.slice(file_src))?;
+        self.p.write("\n")?;
         if start.0 == end.0 {
             // render single-line span
             let offset = safe_sub(start.1, 1);
             let length = cmp::max(1, safe_sub(end.1, start.1));
-            self.write_label_margin_end(out, margin)?;
-            self.p.skip(out, 2 + offset)?;
-            self.p.write_style(out, highlight)?;
-            self.p.repeat(out, length, highlight_char)?;
+            self.write_label_margin_end(margin)?;
+            self.p.skip(2 + offset)?;
+            self.p.write_style(highlight)?;
+            self.p.repeat(length, highlight_char)?;
         } else {
             let end_line = file.find_line_span(end.0).unwrap();
             // render multi-line span
             let offset_start = start.1;
             let offset_end = safe_sub(end.1, 1);
-            self.write_label_margin(out, margin, ":")?; // start underline
-            self.p.write_style(out, highlight)?;
-            self.p.skip(out, 1)?;
-            self.p.repeat(out, offset_start, "_")?;
-            self.p.repeat(out, 1, highlight_char)?;
-            self.p.write(out, "\n")?;
-            self.write_label_margin(out, margin, &end_line_n)?; // end
-            self.p.write_style(out, highlight)?;
-            self.p.write(out, "| ")?;
-            self.p.write_style(out, Style::default())?;
-            self.p.write(out, end_line.slice(file_src))?;
-            self.p.write(out, "\n")?;
-            self.write_label_margin_end(out, margin)?; // end underline
-            self.p.write_style(out, highlight)?;
-            self.p.write(out, "|")?;
-            self.p.repeat(out, offset_end, "_")?;
-            self.p.repeat(out, 1, highlight_char)?;
+            self.write_label_margin(margin, ":")?; // start underline
+            self.p.write_style(highlight)?;
+            self.p.skip(1)?;
+            self.p.repeat(offset_start, "_")?;
+            self.p.repeat(1, highlight_char)?;
+            self.p.write("\n")?;
+            self.write_label_margin(margin, &end_line_n)?; // end
+            self.p.write_style(highlight)?;
+            self.p.write("| ")?;
+            self.p.write_style(Style::default())?;
+            self.p.write(end_line.slice(file_src))?;
+            self.p.write("\n")?;
+            self.write_label_margin_end(margin)?; // end underline
+            self.p.write_style(highlight)?;
+            self.p.write("|")?;
+            self.p.repeat(offset_end, "_")?;
+            self.p.repeat(1, highlight_char)?;
         }
         // write caption
         if let Some(caption) = &label.caption {
-            self.p.write(out, " ")?;
-            self.write_message(out, caption)?;
+            self.p.write(" ")?;
+            self.write_message(caption)?;
         }
-        self.p.write_style(out, Style::default())?;
+        self.p.write_style(Style::default())?;
         Ok(())
     }
 
-    fn write_label_margin<W : io::Write>(
+    fn write_label_margin(
         &mut self,
-        out : &mut W,
         margin : usize,
         text : &str,
     ) -> io::Result<()> {
-        self.p.skip(out, margin - text.len())?;
-        self.p.write_style(out, Colour::BrightCyan)?;
-        self.p.write(out, text)?;
-        self.p.write(out, " | ")?;
-        self.p.write_style(out, Style::default())?;
+        self.p.skip(margin - text.len())?;
+        self.p.write_style(Colour::BrightCyan)?;
+        self.p.write(text)?;
+        self.p.write(" | ")?;
+        self.p.write_style(Style::default())?;
         Ok(())
     }
 
-    fn write_label_margin_end<W : io::Write>(
-        &mut self,
-        out : &mut W,
-        margin : usize,
-    ) -> io::Result<()> {
-        self.p.skip(out, margin)?;
-        self.p.write_style(out, Colour::BrightCyan)?;
-        self.p.write(out, " ' ")?;
-        self.p.write_style(out, Style::default())?;
+    fn write_label_margin_end(&mut self, margin : usize) -> io::Result<()> {
+        self.p.skip(margin)?;
+        self.p.write_style(Colour::BrightCyan)?;
+        self.p.write(" ' ")?;
+        self.p.write_style(Style::default())?;
         Ok(())
     }
 
-    fn write_note<W : io::Write>(
-        &mut self,
-        out : &mut W,
-        note : &Note,
-    ) -> io::Result<()> {
+    fn write_note(&mut self, note : &Note) -> io::Result<()> {
         let note_style = Colour::BrightGreen.decorated(Decoration::Bold);
-        self.p.write_style(out, note_style)?;
-        self.p.write(out, "\nnote")?;
-        self.p.write_style(out, Style::default())?;
-        self.p.write(out, ": ")?;
+        self.p.write_style(note_style)?;
+        self.p.write("\nnote")?;
+        self.p.write_style(Style::default())?;
+        self.p.write(": ")?;
         // render caption
-        self.write_message(out, &note.caption)?;
+        self.write_message(&note.caption)?;
         Ok(())
     }
 
-    fn write_path<W : io::Write>(
-        &mut self,
-        out : &mut W,
-        location : &Location,
-    ) -> io::Result<()> {
-        self.p.write(out, &location.show_path(self.files))
+    fn write_path(&mut self, location : &Location) -> io::Result<()> {
+        self.p.write(&location.show_path(self.files))
     }
 
-    fn write_message<W : io::Write>(
-        &mut self,
-        out : &mut W,
-        message : &Message,
-    ) -> io::Result<()> {
+    fn write_message(&mut self, message : &Message) -> io::Result<()> {
         self.message_str.clear();
         message.write_to_string(self.files, &mut self.message_str);
-        self.p.write(out, &self.message_str)
+        self.p.write(&self.message_str)
     }
 }

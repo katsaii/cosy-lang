@@ -1,9 +1,9 @@
-use std::{ env, io, io::IsTerminal };
+use std::io;
 use std::path::PathBuf;
 
 use crate::src::SourceMap;
 use crate::error::{ IssueManager, log, cli };
-use crate::pretty::PrettyPrinter;
+use crate::pretty;
 
 /// Common info used throughout compilation.
 pub struct Session {
@@ -24,49 +24,26 @@ impl Session {
         }
     }
 
-    /// Prints the errors reported by the current `IssueManager`, returning
-    /// an exit code to return from the program.
-    pub fn print_errors(
+    /// Writes any compiler errors using the supplied pretty printer.
+    pub fn write_errors<W : io::Write>(
+        &self,
+        printer : &mut pretty::PrettyPrinter<W>,
+        use_compact_errors : bool,
+    ) -> io::Result<()> {
+        if use_compact_errors {
+            log::write_errors(printer, &self.files, &self.issues)
+        } else {
+            cli::write_errors(printer, &self.files, &self.issues)
+        }
+    }
+
+    /// Writes any compiler errors to the standard error output.
+    pub fn write_errors_to_stderr(
         &self,
         use_compact_errors : bool,
-        use_colour : bool
-    ) -> u8 {
-        let (mut stderr, supports_colour) = stderr_from_env();
-        let mut printer = PrettyPrinter::new(supports_colour && use_colour);
-        let result = if use_compact_errors {
-            log::write_errors(&mut printer, &mut stderr, &self.files, &self.issues)
-        } else {
-            cli::write_errors(&mut printer, &mut stderr, &self.files, &self.issues)
-        };
-        if let Err(err) = result {
-            eprintln!("UNEXPECTED ERROR WHEN REPORTING ERRORS:\n{}", err);
-            return 2;
-        }
-        if self.issues.has_errors() {
-            return 1;
-        }
-        return 0;
+        use_colour : bool,
+    ) -> io::Result<()> {
+        let mut printer = pretty::from_env(use_colour);
+        self.write_errors(&mut printer, use_compact_errors)
     }
-}
-
-fn stderr_from_env() -> (io::Stderr, bool) {
-    let stderr = io::stderr();
-    let supports_colour = 'blk: {
-        if !stderr.is_terminal() {
-            break 'blk false;
-        }
-        if let Ok(val) = env::var("CLICOLOR_FORCE") {
-            if val != "0" {
-                break 'blk true;
-            }
-        }
-        if env::var("NO_COLOR").is_ok() {
-            break 'blk false;
-        }
-        if let Ok(val) = env::var("CLICOLOR_FORCE") {
-            break 'blk val != "0";
-        }
-        true
-    };
-    (stderr, supports_colour)
 }
