@@ -2,7 +2,7 @@ mod token;
 
 use std::{ io, mem, str::CharIndices, path::Path };
 
-use crate::src::Span;
+use crate::src::{ Span, SourceFile };
 use crate::pretty::{ PrettyPrinter, Colour, Decoration, Style };
 
 pub use token::Token;
@@ -207,8 +207,9 @@ const MAX_SRC_LENGTH : usize = 64;
 /// Pretty prints a sequence of tokens for debugging purposes.
 pub fn debug_write_tokens<W : io::Write>(
     printer : &mut PrettyPrinter<W>,
-    src : &str,
+    file : &SourceFile,
 ) -> io::Result<()> {
+    let src = &file.src;
     let mut lexer = Lexer::new(src);
     loop {
         let (span, token) = lexer.next();
@@ -219,13 +220,15 @@ pub fn debug_write_tokens<W : io::Write>(
         printer.write_style(Decoration::Dimmed)?;
         let token_str = span.slice(&src);
         if token_str.len() > MAX_SRC_LENGTH {
-            println!("...");
+            printer.write("...")?;
         } else {
-            println!("{:?}", token_str);
-        };
+            printer.write(&format!("{:?}", token_str))?;
+        }
         printer.write_style(Style::default())?;
+        printer.write("\n")?;
         if token == Token::EoF {
-            break Ok(());
+            break;
         }
     }
+    Ok(())
 }

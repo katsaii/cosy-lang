@@ -43,7 +43,7 @@ impl Session {
         use_compact_errors : bool,
         use_colour : bool,
     ) -> io::Result<()> {
-        let mut printer = pretty::from_env(use_colour);
+        let mut printer = pretty::from_term(io::stderr(), use_colour);
         self.write_errors(&mut printer, use_compact_errors)
     }
 }

@@ -1,26 +1,30 @@
 use std::{ env, io, io::IsTerminal };
 
+fn env_supports_colour() -> bool {
+    if let Ok(val) = env::var("CLICOLOR_FORCE") {
+        if val != "0" {
+            return true;
+        }
+    }
+    if env::var("NO_COLOR").is_ok() {
+        return false;
+    }
+    if let Ok(val) = env::var("CLICOLOR_FORCE") {
+        return val != "0";
+    }
+    true
+}
+
 /// Creates a new pretty printer that writes to standard error.
-pub fn from_env(use_colour : bool) -> PrettyPrinter<io::Stderr> {
-    let stderr = io::stderr();
-    let supports_colour = 'blk: {
-        if !stderr.is_terminal() {
-            break 'blk false;
-        }
-        if let Ok(val) = env::var("CLICOLOR_FORCE") {
-            if val != "0" {
-                break 'blk true;
-            }
-        }
-        if env::var("NO_COLOR").is_ok() {
-            break 'blk false;
-        }
-        if let Ok(val) = env::var("CLICOLOR_FORCE") {
-            break 'blk val != "0";
-        }
-        true
+pub fn from_term<W>(term : W, use_colour : bool) -> PrettyPrinter<W>
+    where W : io::Write + IsTerminal
+{
+    let use_colour = use_colour && if term.is_terminal() {
+        env_supports_colour()
+    } else {
+        false
     };
-    PrettyPrinter::new(stderr, supports_colour && use_colour)
+    PrettyPrinter::new(term, use_colour)
 }
 
 /// Assists with pretty printing tasks.
@@ -34,8 +38,8 @@ pub struct PrettyPrinter<W : io::Write> {
 }
 
 impl<W : io::Write> PrettyPrinter<W> {
-    pub fn new(out : W, use_colour : bool) -> Self {
-        Self {
+    pub fn new(out : W, use_colour : bool) -> PrettyPrinter<W> {
+        PrettyPrinter {
             out,
             column : 0,
             indent : 0,
