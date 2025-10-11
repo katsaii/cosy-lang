@@ -1,7 +1,5 @@
+use std::process::ExitCode;
 use std::path::{ Path, PathBuf };
-use libcosyc::{ Session, error::Diagnostic };
-use libcosyc::parse::{ Parser, ast };
-use libcosyc::lower::{ Ast2Hir, hir };
 
 /// Parses the contents of a file and prints its untyped AST.
 #[derive(super::Args)]
@@ -14,12 +12,15 @@ pub(super) struct Args {
     lower : bool,
 }
 
-pub(super) fn execute(err : &mut super::ErrorReporter, args : Args) {
-    let mut sess = Session::new();
-    parse_session(&mut sess, &args.file_path, args.lower);
-    err.submit(&sess);
+pub(super) fn execute(
+    args_other : super::CommonArgs,
+    args : Args,
+) {
+    //let mut sess = Session::new();
+    //parse_session(&mut sess, &args.file_path, args.lower);
+    //err.submit(&sess);
 }
-
+/*
 fn parse_session(sess : &mut Session, path : &Path, lower : bool) -> Option<()> {
     let file_data = match sess.manifest.load(path) {
         Ok(ok) => ok,
@@ -40,3 +41,4 @@ fn parse_session(sess : &mut Session, path : &Path, lower : bool) -> Option<()> 
     }
     Some(())
 }
+*/

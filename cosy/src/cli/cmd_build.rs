@@ -1,9 +1,6 @@
 use std::fs;
+use std::process::ExitCode;
 use std::path::{ Path, PathBuf };
-use libcosyc::{ Session, error::Diagnostic };
-use libcosyc::parse::{ Parser, ast };
-use libcosyc::lower::{ Ast2Hir, hir, Hir2Casm, casm };
-use libcosyc::r#gen::llvm;
 
 /// Builds the package and immediately runs its entrypoint.
 #[derive(super::Args)]
@@ -15,14 +12,17 @@ pub(super) struct Args {
     package_path : PathBuf,
 }
 
-pub(super) fn execute(err : &mut super::ErrorReporter, args : Args) {
-    let mut sess = Session::new();
-    if let Some((name, entry)) = find_package_root(&mut sess, &args.package_path) {
-        build_package(&mut sess, name, entry);
-    }
-    err.submit(&sess);
+pub(super) fn execute(
+    args_other : super::CommonArgs,
+    args : Args,
+) {
+    //let mut sess = Session::new();
+    //if let Some((name, entry)) = find_package_root(&mut sess, &args.package_path) {
+    //    build_package(&mut sess, name, entry);
+    //}
+    //err.submit(&sess);
 }
-
+/*
 fn find_package_root(sess : &mut Session, path : &Path) -> Option<(String, PathBuf)> {
     let is_dir = match fs::metadata(path) {
         Ok(meta) => meta.is_dir(),
@@ -103,3 +103,4 @@ fn build_llvm_target(sess : &mut Session, casm : &casm::Package) -> Option<()> {
     }
     Some(())
 }
+*/

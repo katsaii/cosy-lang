@@ -136,7 +136,7 @@ impl SourceMap {
 
 #[derive(Debug)]
 pub enum GetFileResult<'path> {
-    Ok(&'path Path, Arc<SourceFile>),
+    Ok((&'path Path, Arc<SourceFile>)),
     ErrNotInManifest,
     ErrIo(io::Error),
 }
@@ -158,13 +158,13 @@ impl SourceMap {
             None => return GetFileResult::ErrNotInManifest,
         };
         if let Some(file) = self.files.borrow().get(&file_id) {
-            GetFileResult::Ok(path, file.to_owned())
+            GetFileResult::Ok((path, file.to_owned()))
         } else {
             let src = match fs::read_to_string(path) {
                 Ok(ok) => ok,
                 Err(err) => return GetFileResult::ErrIo(err),
             };
-            GetFileResult::Ok(path, self.add_file(file_id, src))
+            GetFileResult::Ok((path, self.add_file(file_id, src)))
         }
     }
 }
@@ -225,6 +225,24 @@ impl SourceMap {
             self.add_file(file_id, src)
         };
         LoadFileResult::Ok(file)
+    }
+
+    /// Loads a file at the given path, and returns its source content
+    /// regardless of whether it was modified.
+    pub fn load_file(
+        &mut self,
+        path : &Path,
+    ) -> io::Result<Arc<SourceFile>> {
+        let file_id = match self.load_file_if_new_or_modified(path) {
+            LoadFileResult::Ok(file) => return Ok(file),
+            LoadFileResult::ErrIo(err) => return Err(err),
+            LoadFileResult::OkUnchanged(file_id) => file_id,
+        };
+        match self.get_existing_file(file_id) {
+            GetFileResult::Ok((_, file)) => return Ok(file),
+            GetFileResult::ErrNotInManifest => unreachable!(),
+            GetFileResult::ErrIo(err) => return Err(err),
+        }
     }
 }
 
@@ -299,7 +317,7 @@ impl Location {
     /// `filename.ext:line:column`.
     pub fn show_path(&self, source_map : &SourceMap) -> String {
         match source_map.get_existing_file(self.file_id) {
-            GetFileResult::Ok(path, file) => {
+            GetFileResult::Ok((path, file)) => {
                 let (line, column) = file.find_line_and_col(self.span.start);
                 format!("{}:{}:{}", path.display(), line, column)
             },
@@ -317,7 +335,7 @@ impl Location {
         dest : &mut String
     ) -> usize {
         match source_map.get_existing_file(self.file_id) {
-            GetFileResult::Ok(_, file) => {
+            GetFileResult::Ok((_, file)) => {
                 let src_str = self.span.slice(&file.src);
                 dest.push_str(src_str);
                 src_str.len()

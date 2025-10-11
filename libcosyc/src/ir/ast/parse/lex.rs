@@ -1,6 +1,8 @@
 mod token;
 
-use std::{ io, mem, str::CharIndices };
+use std::{ io, mem };
+use std::str::CharIndices;
+use std::path::Path;
 
 use crate::src::{ Span, SourceFile };
 
@@ -208,24 +210,28 @@ use crate::pretty::{ PrettyPrinter, Colour, Decoration };
 /// Pretty prints a sequence of tokens for debugging purposes.
 pub fn debug_write_tokens<W : io::Write>(
     printer : &mut PrettyPrinter<W>,
+    path : &Path,
     file : &SourceFile,
 ) -> io::Result<()> {
     let src = &file.src;
     let mut lexer = Lexer::new(src);
     loop {
         let (span, token) = lexer.next();
+        let (line, col) = file.find_line_and_col(span.start);
         printer.write_style(Colour::BrightBlue)?;
-        printer.write(&format!("{:?} ", span))?;
+        printer.write(&format!("{}:{}:{} ", path.display(), line, col))?;
         printer.write_style(Decoration::Bold)?;
         printer.write(&format!("{:?} ", token))?;
-        printer.write_style(Colour::Green)?;
         let token_str = span.slice(&src);
-        if token_str.len() > MAX_SRC_LENGTH {
-            printer.write("...")?;
-        } else {
-            printer.write(&format!("{:?}", token_str))?;
+        if token_str.len() > 0 {
+            printer.write_style(Colour::Green)?;
+            if token_str.len() > MAX_SRC_LENGTH {
+                printer.write("...")?;
+            } else {
+                printer.write(&format!("{:?}", token_str))?;
+            }
+            printer.clear_style()?;
         }
-        printer.clear_style()?;
         printer.write("\n")?;
         if token == Token::EoF {
             break;

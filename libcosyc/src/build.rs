@@ -1,4 +1,4 @@
-use std::io;
+use std::{ io, process };
 use std::path::PathBuf;
 
 use crate::src::SourceMap;
@@ -45,5 +45,19 @@ impl Session {
     ) -> io::Result<()> {
         let mut printer = pretty::from_term(io::stderr(), use_colour);
         self.write_errors(&mut printer, use_compact_errors)
+    }
+
+    /// Drops this session, writing all errors to the given printer.
+    pub fn complete<W : io::Write>(
+        self,
+        printer : &mut pretty::PrettyPrinter<W>,
+        use_compact_errors : bool,
+    ) {
+        if let Err(err) = self.write_errors(printer, use_compact_errors) {
+            panic!("FAILED TO WRITE ERRORS TO OUTPUT!\n{}", err);
+        }
+        if self.issues.has_errors() {
+            process::exit(1);
+        }
     }
 }

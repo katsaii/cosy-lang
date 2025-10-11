@@ -83,7 +83,7 @@ impl<W : io::Write> RendererCtx<'_, '_, W> {
     ) -> io::Result<()> {
         assert!(highlight_char.len() == 1);
         let file = match self.files.get_existing_file(label.location.file_id) {
-            GetFileResult::Ok(_, file) => file,
+            GetFileResult::Ok((_, file)) => file,
             GetFileResult::ErrNotInManifest => return Ok(()),
             GetFileResult::ErrIo(err) => return Err(err),
         };

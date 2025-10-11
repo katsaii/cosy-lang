@@ -1,7 +1,5 @@
+use std::process::ExitCode;
 use std::path::{ Path, PathBuf };
-use libcosyc::Session;
-use libcosyc::error::{ Diagnostic, Severity };
-use libcosyc::parse::lex::{ Lexer, Token };
 
 /// Tokenises a file, reporting each token as an error. Used to test error
 /// reporting.
@@ -14,12 +12,15 @@ pub(super) struct Args {
     file_path : PathBuf,
 }
 
-pub(super) fn execute(err : &mut super::ErrorReporter, args : Args) {
-    let mut sess = Session::new();
-    lex_session(&mut sess, &args.file_path);
-    err.submit(&sess);
+pub(super) fn execute(
+    args_other : super::CommonArgs,
+    args : Args,
+) {
+    //let mut sess = Session::new();
+    //lex_session(&mut sess, &args.file_path);
+    //err.submit(&sess);
 }
-
+/*
 fn lex_session(sess : &mut Session, path : &Path) -> Option<()> {
     let file_data = match sess.manifest.load(path) {
         Ok(ok) => ok,
@@ -73,3 +74,4 @@ fn lex_session(sess : &mut Session, path : &Path) -> Option<()> {
         .report(&mut sess.issues);
     Some(())
 }
+*/

@@ -1,7 +1,7 @@
 pub mod cli;
 pub mod log;
 
-use std::fmt;
+use std::{ fmt, io };
 
 use crate::src::{ Location, Message };
 use crate::pretty::Colour;
@@ -90,6 +90,12 @@ pub struct Diagnostic {
     /// message. These may describe general fixes, or other reasons why an
     /// error occurred (e.g. "known bug" or "unsupported").
     pub notes : Vec<Note>,
+}
+
+impl From<io::Error> for Diagnostic {
+    fn from(err : io::Error) -> Diagnostic {
+        Diagnostic::error().note(("{}", [err.into()]))
+    }
 }
 
 impl Diagnostic {

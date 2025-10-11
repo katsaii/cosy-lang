@@ -1,6 +1,10 @@
+use std::process::ExitCode;
 use std::path::{ Path, PathBuf };
-use libcosyc::{ Session, error::Diagnostic };
-use libcosyc::parse::lex::{ Lexer, Token, self as lex };
+
+use libcosyc::build::Session;
+use libcosyc::src::LoadFileResult;
+use libcosyc::error::Diagnostic;
+use libcosyc::ir::ast::parse::lex;
 
 /// Tokenises a file and outputs its lexical info.
 ///
@@ -12,12 +16,33 @@ pub(super) struct Args {
     file_path : PathBuf,
 }
 
-pub(super) fn execute(err : &mut super::ErrorReporter, args : Args) {
+pub(super) fn execute(
+    args_other : super::CommonArgs,
+    args : Args,
+) {
     let mut sess = Session::new();
-    lex_session(&mut sess, &args.file_path);
-    err.submit(&sess);
+    lex_session(args_other.printer, &mut sess, &args.file_path);
+    sess.complete(args_other.printer, args_other.use_compact_errors);
 }
 
+fn lex_session(
+    printer : super::PrinterTy,
+    sess : &mut Session,
+    path : &Path
+) -> Option<()> {
+    let file = match sess.files.load_file(path) {
+        Ok(ok) => ok,
+        Err(err) => {
+            Diagnostic::from(err)
+                .message(("failed to open file `{}`", [path.display().into()]))
+                .report(&mut sess.issues);
+            return None;
+        },
+    };
+    lex::debug_write_tokens(printer, path, file.as_ref()).unwrap();
+    Some(())
+}
+/*
 fn lex_session(sess : &mut Session, path : &Path) -> Option<()> {
     let file_data = match sess.manifest.load(path) {
         Ok(ok) => ok,
@@ -44,3 +69,4 @@ fn lex_session(sess : &mut Session, path : &Path) -> Option<()> {
     lex::debug_print_tokens(path, src, &file_meta.lines, &tokens);
     Some(())
 }
+*/
