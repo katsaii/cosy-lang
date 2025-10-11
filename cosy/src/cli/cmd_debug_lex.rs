@@ -2,7 +2,6 @@ use std::process::ExitCode;
 use std::path::{ Path, PathBuf };
 
 use libcosyc::build::Session;
-use libcosyc::src::LoadFileResult;
 use libcosyc::error::Diagnostic;
 use libcosyc::ir::ast::parse::lex;
 
@@ -42,31 +41,3 @@ fn lex_session(
     lex::debug_write_tokens(printer, path, file.as_ref()).unwrap();
     Some(())
 }
-/*
-fn lex_session(sess : &mut Session, path : &Path) -> Option<()> {
-    let file_data = match sess.manifest.load(path) {
-        Ok(ok) => ok,
-        Err(err) => {
-            Diagnostic::error()
-                .message(("failed to open file `{}`", [path.display().into()]))
-                .note(("{}", [err.into()]))
-                .report(&mut sess.issues);
-            return None;
-        },
-    };
-    let file_meta = sess.manifest.get(file_data.id).unwrap();
-    let src = &file_data.src;
-    let mut lexer = Lexer::new(src);
-    let mut tokens = vec![];
-    loop {
-        let token = lexer.next();
-        let is_eof = token.1 == Token::EoF;
-        tokens.push(token);
-        if is_eof {
-            break;
-        }
-    }
-    lex::debug_print_tokens(path, src, &file_meta.lines, &tokens);
-    Some(())
-}
-*/

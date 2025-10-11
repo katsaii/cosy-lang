@@ -1,6 +1,10 @@
 use std::process::ExitCode;
 use std::path::{ Path, PathBuf };
 
+use libcosyc::build::Session;
+use libcosyc::error::{ Diagnostic, Severity };
+use libcosyc::ir::ast::parse::lex::{ Lexer, Token };
+
 /// Tokenises a file, reporting each token as an error. Used to test error
 /// reporting.
 ///
@@ -16,23 +20,25 @@ pub(super) fn execute(
     args_other : super::CommonArgs,
     args : Args,
 ) {
-    //let mut sess = Session::new();
-    //lex_session(&mut sess, &args.file_path);
-    //err.submit(&sess);
+    let mut sess = Session::new();
+    lex_session(&mut sess, &args.file_path);
+    sess.complete(args_other.printer, args_other.use_compact_errors);
 }
-/*
-fn lex_session(sess : &mut Session, path : &Path) -> Option<()> {
-    let file_data = match sess.manifest.load(path) {
+
+fn lex_session(
+    sess : &mut Session,
+    path : &Path
+) -> Option<()> {
+    let file = match sess.files.load_file(path) {
         Ok(ok) => ok,
         Err(err) => {
-            Diagnostic::error()
+            Diagnostic::from(err)
                 .message(("failed to open file `{}`", [path.display().into()]))
-                .note(("{}", [err.into()]))
                 .report(&mut sess.issues);
             return None;
         },
     };
-    let mut lexer = Lexer::new(&file_data.src);
+    let mut lexer = Lexer::new(&file.src);
     let span_start = lexer.peek_span().clone();
     loop {
         let token = lexer.next();
@@ -44,13 +50,11 @@ fn lex_session(sess : &mut Session, path : &Path) -> Option<()> {
         };
         let mut diag = Diagnostic::new(severity)
             .message(("token name: {}", [token_name.into()]))
-            .label((file_data.location(&token_span), [
+            .label((file.location(&token_span),
                 ("span: {}", [format!("{:?}", token_span).into()]).into(),
-            ]));
+            ));
         if lexer.peek_linebreak() {
-            diag = diag.label_other((file_data.location(&lexer.peek_span()), [
-                ("next line continues here").into(),
-            ]));
+            diag = diag.note("this token marks the end of a line");
         }
         diag.report(&mut sess.issues);
         if token.1 == Token::EoF {
@@ -61,17 +65,12 @@ fn lex_session(sess : &mut Session, path : &Path) -> Option<()> {
     let span_full = span_start.join(span_end);
     Diagnostic::warning()
         .message("full span")
-        .label((file_data.location(&span_full), [
+        .label((file.location(&span_full), 
                 ("span: {}", [format!("{:?}", span_full).into()]).into(),
-                "multiple captions are split over multiple lines nicely".into(),
-            ]))
-        .label_other((file_data.location(&span_start), [
-                "starts here".into(),
-            ]))
-        .label_other((file_data.location(&span_end), [
-                "ends here".into(),
-            ]))
+            ))
+        .label_other((file.location(&span_start), "starts here".into()))
+        .label_other((file.location(&span_end), "ends here".into()))
+        .note("end-of-file tokens aren't rendered")
         .report(&mut sess.issues);
     Some(())
 }
-*/
