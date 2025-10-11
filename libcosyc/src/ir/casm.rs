@@ -1,3 +1,7 @@
+pub mod lower;
+pub mod emit;
+
+/*
 use bincode::{ Encode, Decode };
 
 use crate::{ source::Located, vfs::Manifest };
@@ -11,3 +15,4 @@ pub struct Package;
 pub fn debug_print_casm(_manifest : &Manifest, package : &Package) {
     println!("{:?}", Package);
 }
+*/

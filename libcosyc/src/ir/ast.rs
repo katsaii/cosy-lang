@@ -78,7 +78,7 @@ impl Node {
     }
 }
 
-use crate::pretty::{ PrettyPrinter, Colour, Decoration, Style };
+use crate::pretty::{ PrettyPrinter, Colour, Decoration };
 
 /// Pretty prints an AST for debugging purposes.
 pub fn debug_write_ast<W : io::Write>(

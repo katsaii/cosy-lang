@@ -1,3 +1,6 @@
+pub mod lower;
+
+/*
 //! Similar to the AST, except it performs simple type inference and simplifies
 //! some language constructs.
 
@@ -55,3 +58,4 @@ pub enum Decl {
 pub fn debug_print_hir(_manifest : &Manifest, module : &Module) {
     println!("{:?}", module);
 }
+*/

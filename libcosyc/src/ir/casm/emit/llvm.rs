@@ -1,3 +1,4 @@
+/*
 use std::path::Path;
 
 use inkwell::builder::Builder;
@@ -73,3 +74,4 @@ pub fn emit_to_file(
     codegen.module.print_to_stderr();
     false
 }
+*/

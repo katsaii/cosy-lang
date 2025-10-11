@@ -3,7 +3,7 @@ pub mod lex;
 use lex::Token;
 
 use crate::ir::ast;
-use crate::src::{ Span, Location, Located, SourceFile, Message };
+use crate::src::{ Span, Located, SourceFile };
 use crate::error::{ IssueManager, Diagnostic };
 
 /// Parses the contents of a Cosy source file into an untyped AST.

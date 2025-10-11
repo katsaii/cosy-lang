@@ -1,3 +1,4 @@
+/*
 pub mod hir;
 pub mod casm;
 
@@ -57,3 +58,4 @@ impl<'a> Hir2Casm<'a> {
         casm::Package
     }
 }
+*/

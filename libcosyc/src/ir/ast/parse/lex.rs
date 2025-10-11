@@ -1,6 +1,6 @@
 mod token;
 
-use std::{ io, mem, str::CharIndices, path::Path };
+use std::{ io, mem, str::CharIndices };
 
 use crate::src::{ Span, SourceFile };
 
@@ -203,7 +203,7 @@ pub(super) fn is_digit_36(x : char) -> bool { is_digit(x) || is_alpha(x) }
 
 const MAX_SRC_LENGTH : usize = 64;
 
-use crate::pretty::{ PrettyPrinter, Colour, Decoration, Style };
+use crate::pretty::{ PrettyPrinter, Colour, Decoration };
 
 /// Pretty prints a sequence of tokens for debugging purposes.
 pub fn debug_write_tokens<W : io::Write>(

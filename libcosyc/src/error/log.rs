@@ -2,7 +2,7 @@ use std::io;
 
 use crate::src::{ SourceMap, Message, Location };
 use crate::error::{ Diagnostic, IssueManager };
-use crate::pretty::{ PrettyPrinter, Colour, Decoration, Style };
+use crate::pretty::{ PrettyPrinter, Colour, Decoration };
 
 /// Renders diagnostic information on a single line:
 ///

@@ -2,5 +2,5 @@
 resolver = "3"
 members = [
     "cosy",
-    "libcosyc", "libcosyc_new",
+    "libcosyc",
 ]
