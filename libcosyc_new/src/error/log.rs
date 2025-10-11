@@ -38,14 +38,14 @@ impl<W : io::Write> RendererCtx<'_, '_, W> {
         let diag_style = diag.severity.as_colour().decorated(Decoration::Bold);
         self.p.write_style(diag_style)?;
         self.p.write(diag.severity.as_str())?;
-        self.p.write_style(Style::default())?;
+        self.p.clear_style()?;
         self.p.write(": ")?;
         // render message
         if let Some(message) = &diag.message {
             self.p.indent_stash();
             self.p.write_style(Decoration::Bold)?;
             self.write_message(message)?;
-            self.p.write_style(Style::default())?;
+            self.p.clear_style()?;
             self.p.indent_pop();
             self.p.write(" ")?;
         }
@@ -62,7 +62,7 @@ impl<W : io::Write> RendererCtx<'_, '_, W> {
                 first = false;
                 self.write_path(&label.location)?;
             }
-            self.p.write_style(Style::default())?;
+            self.p.clear_style()?;
         }
         self.p.write("\n")?;
         Ok(())

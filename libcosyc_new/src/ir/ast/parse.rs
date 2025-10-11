@@ -7,20 +7,24 @@ use crate::src::{ Span, Location, Located, SourceFile, Message };
 use crate::error::{ IssueManager, Diagnostic };
 
 /// Parses the contents of a Cosy source file into an untyped AST.
-pub struct Parser<'a> {
+///
+/// Reports any errors to `issues`.
+pub fn from_file(
+    issues : &mut IssueManager,
+    file : &SourceFile
+) -> ast::Node {
+    let lexer = lex::Lexer::new(&file.src);
+    let mut parser = Parser { issues, file, lexer };
+    parser.parse_module_body()
+}
+
+struct Parser<'a> {
     issues : &'a mut IssueManager,
     file : &'a SourceFile,
     lexer : lex::Lexer<'a>,
 }
 
 impl<'a> Parser<'a> {
-    /// Parses the contents of a module and reports any errors to `issues`.
-    pub fn parse(issues : &'a mut IssueManager, file : &'a SourceFile) -> ast::Node {
-        let lexer = lex::Lexer::new(&file.src);
-        let mut parser = Self { issues, file, lexer };
-        parser.parse_module_body()
-    }
-
     fn make_dbg<T>(&self, span : &Span, value : T) -> Located<T> {
         Located { value, loc : self.file.location(span) }
     }

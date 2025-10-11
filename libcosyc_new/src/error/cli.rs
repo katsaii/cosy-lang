@@ -39,7 +39,7 @@ impl<W : io::Write> RendererCtx<'_, '_, W> {
                 .decorated(Decoration::Bold);
             self.p.write_style(stats_style)?;
             self.p.write(stats.max_severity.as_str())?;
-            self.p.write_style(Style::default())?;
+            self.p.clear_style()?;
             self.p.write(&format!(": displayed {} message(s)\n", stats_total))?;
         }
         Ok(())
@@ -49,14 +49,14 @@ impl<W : io::Write> RendererCtx<'_, '_, W> {
         let diag_style = diag.severity.as_colour().decorated(Decoration::Bold);
         self.p.write_style(diag_style)?;
         self.p.write(diag.severity.as_str())?;
-        self.p.write_style(Style::default())?;
+        self.p.clear_style()?;
         self.p.write(": ")?;
         // render message
         if let Some(message) = &diag.message {
             self.p.indent_stash();
             self.p.write_style(Decoration::Bold)?;
             self.write_message(message)?;
-            self.p.write_style(Style::default())?;
+            self.p.clear_style()?;
             self.p.indent_pop();
         }
         // render labels
@@ -98,7 +98,7 @@ impl<W : io::Write> RendererCtx<'_, '_, W> {
         self.p.write_style(Colour::BrightCyan)?;
         self.p.write(">>> ")?;
         self.write_path(&label.location)?;
-        self.p.write_style(Style::default())?;
+        self.p.clear_style()?;
         self.p.write("\n")?;
         // render span
         self.write_label_margin(margin, &start_line_n)?;
@@ -128,7 +128,7 @@ impl<W : io::Write> RendererCtx<'_, '_, W> {
             self.write_label_margin(margin, &end_line_n)?; // end
             self.p.write_style(highlight)?;
             self.p.write("| ")?;
-            self.p.write_style(Style::default())?;
+            self.p.clear_style()?;
             self.p.write(end_line.slice(file_src))?;
             self.p.write("\n")?;
             self.write_label_margin_end(margin)?; // end underline
@@ -142,7 +142,7 @@ impl<W : io::Write> RendererCtx<'_, '_, W> {
             self.p.write(" ")?;
             self.write_message(caption)?;
         }
-        self.p.write_style(Style::default())?;
+        self.p.clear_style()?;
         Ok(())
     }
 
@@ -155,7 +155,7 @@ impl<W : io::Write> RendererCtx<'_, '_, W> {
         self.p.write_style(Colour::BrightCyan)?;
         self.p.write(text)?;
         self.p.write(" | ")?;
-        self.p.write_style(Style::default())?;
+        self.p.clear_style()?;
         Ok(())
     }
 
@@ -163,7 +163,7 @@ impl<W : io::Write> RendererCtx<'_, '_, W> {
         self.p.skip(margin)?;
         self.p.write_style(Colour::BrightCyan)?;
         self.p.write(" ' ")?;
-        self.p.write_style(Style::default())?;
+        self.p.clear_style()?;
         Ok(())
     }
 
@@ -171,7 +171,7 @@ impl<W : io::Write> RendererCtx<'_, '_, W> {
         let note_style = Colour::BrightGreen.decorated(Decoration::Bold);
         self.p.write_style(note_style)?;
         self.p.write("\nnote")?;
-        self.p.write_style(Style::default())?;
+        self.p.clear_style()?;
         self.p.write(": ")?;
         // render caption
         self.write_message(&note.caption)?;

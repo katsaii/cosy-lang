@@ -3,7 +3,6 @@ mod token;
 use std::{ io, mem, str::CharIndices, path::Path };
 
 use crate::src::{ Span, SourceFile };
-use crate::pretty::{ PrettyPrinter, Colour, Decoration, Style };
 
 pub use token::Token;
 
@@ -204,6 +203,8 @@ pub(super) fn is_digit_36(x : char) -> bool { is_digit(x) || is_alpha(x) }
 
 const MAX_SRC_LENGTH : usize = 64;
 
+use crate::pretty::{ PrettyPrinter, Colour, Decoration, Style };
+
 /// Pretty prints a sequence of tokens for debugging purposes.
 pub fn debug_write_tokens<W : io::Write>(
     printer : &mut PrettyPrinter<W>,
@@ -217,14 +218,14 @@ pub fn debug_write_tokens<W : io::Write>(
         printer.write(&format!("{:?} ", span))?;
         printer.write_style(Decoration::Bold)?;
         printer.write(&format!("{:?} ", token))?;
-        printer.write_style(Decoration::Dimmed)?;
+        printer.write_style(Colour::Green)?;
         let token_str = span.slice(&src);
         if token_str.len() > MAX_SRC_LENGTH {
             printer.write("...")?;
         } else {
             printer.write(&format!("{:?}", token_str))?;
         }
-        printer.write_style(Style::default())?;
+        printer.clear_style()?;
         printer.write("\n")?;
         if token == Token::EoF {
             break;

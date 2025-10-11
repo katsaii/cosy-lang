@@ -1,5 +1,6 @@
 pub mod parse;
 
+use std::io;
 use bincode::{ Encode, Decode };
 
 use crate::src::{ Location, Located, SourceMap };
@@ -77,63 +78,107 @@ impl Node {
     }
 }
 
-/// Pretty prints an AST for debugging purposes.
-pub fn debug_print_ast(files : &SourceMap, ast : &Node) {
-    debug_print_ast_(files, ast, 0);
-}
+use crate::pretty::{ PrettyPrinter, Colour, Decoration, Style };
 
-fn debug_print_ast_(files : &SourceMap, node : &Node, indent : usize) {
-    print!("{}{}", "  ".repeat(indent), node.name());
-    match node {
+/// Pretty prints an AST for debugging purposes.
+pub fn debug_write_ast<W : io::Write>(
+    printer : &mut PrettyPrinter<W>,
+    files : &SourceMap,
+    ast_node : &Node,
+) -> io::Result<()> {
+    printer.write_style(Decoration::Bold)?;
+    printer.write(ast_node.name())?;
+    let style_val = Colour::Green;
+    let style_loc = Colour::BrightCyan;
+    let indent = 2;
+    match ast_node {
         Node::NumIntegral(n) => {
-            println!(" {:?} <{}>",
-                n.value, n.loc.show_path(files)
-            );
+            printer.write_style(style_val)?;
+            printer.write(&format!(" {:?}", n.value))?;
+            printer.write_style(style_loc)?;
+            printer.write(&format!(" <{}>", n.loc.show_path(files)))?;
+            printer.clear_style()?;
+            printer.write("\n")?;
         },
         Node::NumRational(sym) => {
-            println!(" {:?} <{}>",
-                sym.value, sym.loc.show_path(files)
-            );
+            printer.write_style(style_val)?;
+            printer.write(&format!(" {:?}", sym.value))?;
+            printer.write_style(style_loc)?;
+            printer.write(&format!(" <{}>", sym.loc.show_path(files)))?;
+            printer.clear_style()?;
+            printer.write("\n")?;
         },
         Node::Bool(b) => {
-            println!(" {:?} <{}>",
-                b.value, b.loc.show_path(files)
-            );
+            printer.write_style(style_val)?;
+            printer.write(&format!(" {:?}", b.value))?;
+            printer.write_style(style_loc)?;
+            printer.write(&format!(" <{}>", b.loc.show_path(files)))?;
+            printer.clear_style()?;
+            printer.write("\n")?;
         },
         Node::Id(sym) => {
-            println!(" {:?} <{}>",
-                sym.value, sym.loc.show_path(files)
-            );
+            printer.write_style(style_val)?;
+            printer.write(&format!(" {:?}", sym.value))?;
+            printer.write_style(style_loc)?;
+            printer.write(&format!(" <{}>", sym.loc.show_path(files)))?;
+            printer.clear_style()?;
+            printer.write("\n")?;
         },
         Node::Block(blk) => {
-            println!(" <{}>", blk.loc.show_path(files));
+            printer.write_style(style_loc)?;
+            printer.write(&format!(" <{}>", blk.loc.show_path(files)))?;
+            printer.clear_style()?;
+            printer.write("\n")?;
+            printer.indent_push_relative(indent);
             for node in &blk.value {
-                debug_print_ast_(files, node, indent + 1);
+                debug_write_ast(printer, files, node)?;
             }
+            printer.indent_pop();
         },
         Node::Parens(node) => {
-            println!(" <{}>", node.loc.show_path(files));
-            debug_print_ast_(files, &node.value, indent + 1);
+            printer.write_style(style_loc)?;
+            printer.write(&format!(" <{}>", node.loc.show_path(files)))?;
+            printer.clear_style()?;
+            printer.write("\n")?;
+            printer.indent_push_relative(indent);
+            debug_write_ast(printer, files, &node.value)?;
+            printer.indent_pop();
         },
         Node::Local { name, init } => {
-            println!(" {:?} <{}>",
-                name.value, name.loc.show_path(files)
-            );
+            printer.write_style(style_val)?;
+            printer.write(&format!(" {:?}", name.value))?;
+            printer.write_style(style_loc)?;
+            printer.write(&format!(" <{}>", name.loc.show_path(files)))?;
+            printer.clear_style()?;
+            printer.write("\n")?;
             if let Some(node) = init.as_ref() {
-                debug_print_ast_(files, &node, indent + 1);
+                printer.indent_push_relative(indent);
+                debug_write_ast(printer, files, &node)?;
+                printer.indent_pop();
             }
         },
         Node::Fn { name, body } => {
-            println!(" {:?} <{}>",
-                name.value, name.loc.show_path(files)
-            );
-            debug_print_ast_(files, &body, indent + 1);
+            printer.write_style(style_val)?;
+            printer.write(&format!(" {:?}", name.value))?;
+            printer.write_style(style_loc)?;
+            printer.write(&format!(" <{}>", name.loc.show_path(files)))?;
+            printer.clear_style()?;
+            printer.write("\n")?;
+            printer.indent_push_relative(indent);
+            debug_write_ast(printer, files, &body)?;
+            printer.indent_pop();
         },
         Node::Scope { vis, node } => {
-            println!(" {:?} <{}>",
-                vis.value, vis.loc.show_path(files)
-            );
-            debug_print_ast_(files, &node, indent + 1);
+            printer.write_style(style_val)?;
+            printer.write(&format!(" {:?}", vis.value))?;
+            printer.write_style(style_loc)?;
+            printer.write(&format!(" <{}>", vis.loc.show_path(files)))?;
+            printer.clear_style()?;
+            printer.write("\n")?;
+            printer.indent_push_relative(indent);
+            debug_write_ast(printer, files, &node)?;
+            printer.indent_pop();
         },
     }
+    Ok(())
 }

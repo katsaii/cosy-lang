@@ -130,6 +130,13 @@ impl<W : io::Write> PrettyPrinter<W> {
         Ok(())
     }
 
+    /// Utility function for resettingn the terminal style.
+    ///
+    /// Alias for `write_style(Style::default())`.
+    pub fn clear_style(&mut self) -> io::Result<()> {
+        self.write_style(Style::default())
+    }
+
     fn ensure_indented(&mut self) -> io::Result<()> {
         if self.do_indent {
             for _ in 0..self.indent {
@@ -153,6 +160,11 @@ impl<W : io::Write> PrettyPrinter<W> {
     pub fn indent_push(&mut self, n : usize) {
         self.indent_stack.push(self.indent);
         self.indent = n;
+    }
+
+    /// Increases the current indentation by a specified value.
+    pub fn indent_push_relative(&mut self, n : usize) {
+        self.indent_push(self.indent + n);
     }
 
     /// Pops the current indentation from the indentation stash. No effect if
