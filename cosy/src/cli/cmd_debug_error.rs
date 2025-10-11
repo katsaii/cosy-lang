@@ -1,4 +1,3 @@
-use std::process::ExitCode;
 use std::path::{ Path, PathBuf };
 
 use libcosyc::build::Session;
@@ -28,14 +27,14 @@ pub(super) fn execute(
 fn lex_session(
     sess : &mut Session,
     path : &Path
-) -> Option<()> {
+) {
     let file = match sess.files.load_file(path) {
         Ok(ok) => ok,
         Err(err) => {
             Diagnostic::from(err)
                 .message(("failed to open file `{}`", [path.display().into()]))
                 .report(&mut sess.issues);
-            return None;
+            return;
         },
     };
     let mut lexer = Lexer::new(&file.src);
@@ -72,5 +71,4 @@ fn lex_session(
         .label_other((file.location(&span_end), "ends here".into()))
         .note("end-of-file tokens aren't rendered")
         .report(&mut sess.issues);
-    Some(())
 }

@@ -13,8 +13,8 @@ pub(super) struct Args {
 }
 
 pub(super) fn execute(
-    args_other : super::CommonArgs,
-    args : Args,
+    _args_other : super::CommonArgs,
+    _args : Args,
 ) {
     //let mut sess = Session::new();
     //if let Some((name, entry)) = find_package_root(&mut sess, &args.package_path) {

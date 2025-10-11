@@ -1,4 +1,3 @@
-use std::process::ExitCode;
 use std::path::{ Path, PathBuf };
 
 use libcosyc::build::Session;
@@ -28,16 +27,15 @@ fn lex_session(
     printer : super::PrinterTy,
     sess : &mut Session,
     path : &Path
-) -> Option<()> {
+) {
     let file = match sess.files.load_file(path) {
         Ok(ok) => ok,
         Err(err) => {
             Diagnostic::from(err)
                 .message(("failed to open file `{}`", [path.display().into()]))
                 .report(&mut sess.issues);
-            return None;
+            return;
         },
     };
     lex::debug_write_tokens(printer, path, file.as_ref()).unwrap();
-    Some(())
 }
