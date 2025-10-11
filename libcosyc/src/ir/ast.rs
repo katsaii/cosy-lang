@@ -1,6 +1,6 @@
 pub mod parse;
 
-use std::io;
+use std::{ io, fmt };
 use bincode::{ Encode, Decode };
 
 use crate::src::{ Location, Located, SourceMap };
@@ -88,46 +88,27 @@ pub fn debug_write_ast<W : io::Write>(
 ) -> io::Result<()> {
     printer.write_style(Decoration::Bold)?;
     printer.write(ast_node.name())?;
-    let style_val = Colour::Green;
-    let style_loc = Colour::BrightCyan;
+    printer.clear_style()?;
     let indent = 2;
     match ast_node {
         Node::NumIntegral(n) => {
-            printer.write_style(style_val)?;
-            printer.write(&format!(" {:?}", n.value))?;
-            printer.write_style(style_loc)?;
-            printer.write(&format!(" <{}>", n.loc.show_path(files)))?;
-            printer.clear_style()?;
+            debug_write_located(printer, files, n)?;
             printer.write("\n")?;
         },
         Node::NumRational(sym) => {
-            printer.write_style(style_val)?;
-            printer.write(&format!(" {:?}", sym.value))?;
-            printer.write_style(style_loc)?;
-            printer.write(&format!(" <{}>", sym.loc.show_path(files)))?;
-            printer.clear_style()?;
+            debug_write_located(printer, files, sym)?;
             printer.write("\n")?;
         },
         Node::Bool(b) => {
-            printer.write_style(style_val)?;
-            printer.write(&format!(" {:?}", b.value))?;
-            printer.write_style(style_loc)?;
-            printer.write(&format!(" <{}>", b.loc.show_path(files)))?;
-            printer.clear_style()?;
+            debug_write_located(printer, files, b)?;
             printer.write("\n")?;
         },
         Node::Id(sym) => {
-            printer.write_style(style_val)?;
-            printer.write(&format!(" {:?}", sym.value))?;
-            printer.write_style(style_loc)?;
-            printer.write(&format!(" <{}>", sym.loc.show_path(files)))?;
-            printer.clear_style()?;
+            debug_write_located(printer, files, sym)?;
             printer.write("\n")?;
         },
         Node::Block(blk) => {
-            printer.write_style(style_loc)?;
-            printer.write(&format!(" <{}>", blk.loc.show_path(files)))?;
-            printer.clear_style()?;
+            debug_write_location(printer, files, &blk.loc)?;
             printer.write("\n")?;
             printer.indent_push_relative(indent);
             for node in &blk.value {
@@ -136,20 +117,14 @@ pub fn debug_write_ast<W : io::Write>(
             printer.indent_pop();
         },
         Node::Parens(node) => {
-            printer.write_style(style_loc)?;
-            printer.write(&format!(" <{}>", node.loc.show_path(files)))?;
-            printer.clear_style()?;
+            debug_write_location(printer, files, &node.loc)?;
             printer.write("\n")?;
             printer.indent_push_relative(indent);
             debug_write_ast(printer, files, &node.value)?;
             printer.indent_pop();
         },
         Node::Local { name, init } => {
-            printer.write_style(style_val)?;
-            printer.write(&format!(" {:?}", name.value))?;
-            printer.write_style(style_loc)?;
-            printer.write(&format!(" <{}>", name.loc.show_path(files)))?;
-            printer.clear_style()?;
+            debug_write_located(printer, files, name)?;
             printer.write("\n")?;
             if let Some(node) = init.as_ref() {
                 printer.indent_push_relative(indent);
@@ -158,27 +133,44 @@ pub fn debug_write_ast<W : io::Write>(
             }
         },
         Node::Fn { name, body } => {
-            printer.write_style(style_val)?;
-            printer.write(&format!(" {:?}", name.value))?;
-            printer.write_style(style_loc)?;
-            printer.write(&format!(" <{}>", name.loc.show_path(files)))?;
-            printer.clear_style()?;
+            debug_write_located(printer, files, name)?;
             printer.write("\n")?;
             printer.indent_push_relative(indent);
             debug_write_ast(printer, files, &body)?;
             printer.indent_pop();
         },
         Node::Scope { vis, node } => {
-            printer.write_style(style_val)?;
-            printer.write(&format!(" {:?}", vis.value))?;
-            printer.write_style(style_loc)?;
-            printer.write(&format!(" <{}>", vis.loc.show_path(files)))?;
-            printer.clear_style()?;
+            debug_write_located(printer, files, vis)?;
             printer.write("\n")?;
             printer.indent_push_relative(indent);
             debug_write_ast(printer, files, &node)?;
             printer.indent_pop();
         },
     }
+    Ok(())
+}
+
+fn debug_write_located<W : io::Write, T : fmt::Debug>(
+    printer : &mut PrettyPrinter<W>,
+    files : &SourceMap,
+    located : &Located<T>,
+) -> io::Result<()> {
+    printer.write(" ")?;
+    printer.write_style(Colour::Green)?;
+    printer.write(&format!("{:?}", located.value))?;
+    printer.clear_style()?;
+    debug_write_location(printer, files, &located.loc)?;
+    Ok(())
+}
+
+fn debug_write_location<W : io::Write>(
+    printer : &mut PrettyPrinter<W>,
+    files : &SourceMap,
+    location : &Location,
+) -> io::Result<()> {
+    printer.write(" ")?;
+    printer.write_style(Colour::BrightCyan)?;
+    printer.write(&format!("<{}>", location.show_path(files)))?;
+    printer.clear_style()?;
     Ok(())
 }
