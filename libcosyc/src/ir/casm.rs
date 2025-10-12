@@ -6,7 +6,7 @@ use std::io;
 use bincode;
 
 use crate::src::SourceMap;
-use crate::pretty::{ PrettyPrinter, Colour, Decoration };
+#[allow(unused_imports)] use crate::pretty::{ PrettyPrinter, Colour, Decoration };
 
 pub use gen_llvm::emit_llvm;
 
@@ -16,7 +16,7 @@ pub struct Package;
 /// Pretty prints Cosy ASM for debugging purposes.
 pub fn debug_write_casm<W : io::Write>(
     printer : &mut PrettyPrinter<W>,
-    files : &SourceMap,
+    _files : &SourceMap,
     package : &Package,
 ) -> io::Result<()> {
     printer.write(&format!("{:?}", package))?;

@@ -1,6 +1,4 @@
-use std::fs;
-use std::process::ExitCode;
-use std::path::{ Path, PathBuf };
+use std::path::PathBuf;
 
 /// Builds the package and immediately runs its entrypoint.
 #[derive(super::Args)]
@@ -12,10 +10,7 @@ pub(super) struct Args {
     package_path : PathBuf,
 }
 
-pub(super) fn execute(
-    _args_other : super::CommonArgs,
-    _args : Args,
-) {
+pub(super) fn execute(mut _cargs : super::CommonArgs, _args : Args) {
     //let mut sess = Session::new();
     //if let Some((name, entry)) = find_package_root(&mut sess, &args.package_path) {
     //    build_package(&mut sess, name, entry);

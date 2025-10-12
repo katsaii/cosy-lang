@@ -3,7 +3,7 @@ use std::path::Path;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::OptimizationLevel;
+#[allow(unused_imports)] use inkwell::OptimizationLevel;
 
 use crate::ir::casm;
 use crate::error::{ IssueManager, Diagnostic };

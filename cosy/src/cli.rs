@@ -12,9 +12,6 @@ use libcosyc::{ pretty, pretty::PrettyPrinter };
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
 struct Cosyc {
-    /// Whether to use a simplified error format.
-    #[arg(long="compact-errors")]
-    use_compact_errors : bool,
     /// Whether to disable printing to the output window in colour.
     #[arg(long="no-colour")]
     use_no_colour : bool,
@@ -23,11 +20,10 @@ struct Cosyc {
     command : CosycCommand,
 }
 
-type PrinterTy<'a> = &'a mut PrettyPrinter<io::Stderr>;
+type PrinterTy = PrettyPrinter<io::Stderr>;
 
-struct CommonArgs<'a> {
-    printer : PrinterTy<'a>,
-    use_compact_errors : bool,
+struct CommonArgs {
+    printer : PrinterTy,
 }
 
 #[derive(Subcommand)]
@@ -47,10 +43,8 @@ enum CosycCommandDebug {
 
 pub(super) fn execute() {
     let cosyc_args = Cosyc::parse();
-    let mut printer = pretty::from_term(io::stderr(), !cosyc_args.use_no_colour);
     let common_args = CommonArgs {
-        printer : &mut printer,
-        use_compact_errors : cosyc_args.use_compact_errors,
+        printer : pretty::from_term(io::stderr(), !cosyc_args.use_no_colour),
     };
     match cosyc_args.command {
         CosycCommand::Build(args) => cmd_build::execute(common_args, args),
