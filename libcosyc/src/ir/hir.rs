@@ -1,11 +1,28 @@
-pub mod lower;
-
-/*
 //! Similar to the AST, except it performs simple type inference and simplifies
 //! some language constructs.
 
-use bincode::{ Encode, Decode };
+pub mod lower;
 
+use std::io;
+use bincode;
+
+use crate::src::SourceMap;
+#[allow(unused_imports)] use crate::pretty::{ PrettyPrinter, Colour, Decoration };
+
+#[derive(Debug, Default, bincode::Encode, bincode::Decode)]
+pub struct Module;
+
+/// Pretty prints Cosy HIR for debugging purposes.
+pub fn debug_write_hir<W : io::Write>(
+    printer : &mut PrettyPrinter<W>,
+    _files : &SourceMap,
+    module : &Module,
+) -> io::Result<()> {
+    printer.write(&format!("{:?}", module))?;
+    Ok(())
+}
+
+/*
 use crate::{ source::Located, vfs::Manifest };
 
 pub use crate::parse::ast::{ Symbol, Visibility };
@@ -52,10 +69,5 @@ pub enum Decl {
         name : Located<Symbol>,
         body : Box<Expr>,
     },
-}
-
-/// Pretty prints HIR for debugging purposes.
-pub fn debug_print_hir(_manifest : &Manifest, module : &Module) {
-    println!("{:?}", module);
 }
 */

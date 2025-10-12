@@ -2,6 +2,7 @@ use bincode;
 
 use std::cell::RefCell;
 use std::sync::Arc;
+//use std::time::SystemTime;
 use std::path::{ PathBuf, Path };
 use std::hash::{ DefaultHasher, Hash, Hasher };
 use std::collections::HashMap;
@@ -64,6 +65,8 @@ struct Manifest {
 struct ManifestFile {
     path : PathBuf,
     hash : FileHash,
+    // TODO :: implement system time into caching
+    //system_time : SystemTime,
 }
 
 impl SourceMap {

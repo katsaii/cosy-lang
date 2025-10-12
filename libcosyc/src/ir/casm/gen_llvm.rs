@@ -12,8 +12,8 @@ use crate::error::{ IssueManager, Diagnostic };
 /// `path`.
 pub fn emit_llvm(
     issues : &mut IssueManager,
+    bitcode_path : &Path,
     _casm : &casm::Package,
-    path : &Path
 ) -> bool {
     let context = Context::create();
     let module = context.create_module("main");
@@ -27,9 +27,11 @@ pub fn emit_llvm(
             .message("unexpected error encountered when generating LLVM bitcode")
             .report(issues);
     }
-    if !codegen.module.write_bitcode_to_path(path) {
+    if !codegen.module.write_bitcode_to_path(bitcode_path) {
         Diagnostic::error()
-            .message(("failed to write LLVM bitcode to path {}", [path.display().into()]))
+            .message(("failed to write LLVM bitcode to path {}", [
+                bitcode_path.display().into()
+            ]))
             .report(issues);
     }
     codegen.module.print_to_stderr();
