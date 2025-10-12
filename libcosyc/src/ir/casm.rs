@@ -1,18 +1,24 @@
+mod gen_llvm;
+
 pub mod lower;
-pub mod emit;
 
-/*
-use bincode::{ Encode, Decode };
+use std::io;
+use bincode;
 
-use crate::{ source::Located, vfs::Manifest };
+use crate::src::SourceMap;
+use crate::pretty::{ PrettyPrinter, Colour, Decoration };
 
-pub use crate::lower::hir;
+pub use gen_llvm::emit_llvm;
 
-#[derive(Debug, Default, Encode, Decode)]
+#[derive(Debug, Default, bincode::Encode, bincode::Decode)]
 pub struct Package;
 
 /// Pretty prints Cosy ASM for debugging purposes.
-pub fn debug_print_casm(_manifest : &Manifest, package : &Package) {
-    println!("{:?}", Package);
+pub fn debug_write_casm<W : io::Write>(
+    printer : &mut PrettyPrinter<W>,
+    files : &SourceMap,
+    package : &Package,
+) -> io::Result<()> {
+    printer.write(&format!("{:?}", package))?;
+    Ok(())
 }
-*/

@@ -60,4 +60,18 @@ impl Session {
             process::exit(1);
         }
     }
+
+    /// Parses a module into its HIR representation, inferring the types of
+    /// all variables as best it can at this stage.
+    pub fn build_module(&mut self, ) -> () {
+        //let file = match sess.files.load_file(path) {
+        //    Ok(ok) => ok,
+        //    Err(err) => {
+        //        Diagnostic::from(err)
+        //            .message(("failed to open file `{}`", [path.display().into()]))
+        //            .report(&mut sess.issues);
+        //        return;
+        //    },
+        //};
+    }
 }

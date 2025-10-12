@@ -4,6 +4,7 @@ use std::{ io, fmt };
 use bincode::{ Encode, Decode };
 
 use crate::src::{ Location, Located, SourceMap };
+use crate::pretty::{ PrettyPrinter, Colour, Decoration };
 
 /// Declaration visibility level.
 #[derive(Debug, Encode, Decode)]
@@ -77,8 +78,6 @@ impl Node {
         }
     }
 }
-
-use crate::pretty::{ PrettyPrinter, Colour, Decoration };
 
 /// Pretty prints an AST for debugging purposes.
 pub fn debug_write_ast<W : io::Write>(

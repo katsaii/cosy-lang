@@ -5,6 +5,7 @@ use std::str::CharIndices;
 use std::path::Path;
 
 use crate::src::{ Span, SourceFile };
+use crate::pretty::{ PrettyPrinter, Colour, Decoration };
 
 pub use token::Token;
 
@@ -204,8 +205,6 @@ pub(super) fn is_digit(x : char) -> bool { x.is_ascii_digit() }
 pub(super) fn is_digit_36(x : char) -> bool { is_digit(x) || is_alpha(x) }
 
 const MAX_SRC_LENGTH : usize = 64;
-
-use crate::pretty::{ PrettyPrinter, Colour, Decoration };
 
 /// Pretty prints a sequence of tokens for debugging purposes.
 pub fn debug_write_tokens<W : io::Write>(

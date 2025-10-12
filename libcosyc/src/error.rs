@@ -4,7 +4,20 @@ pub mod log;
 use std::{ fmt, io };
 
 use crate::src::{ Location, Message };
-use crate::pretty::Colour;
+use crate::pretty::{ Colour, PrettyPrinter };
+
+/// Writes any errors using the supplied pretty printer.
+pub fn write_errors<W : io::Write>(
+    &self,
+    printer : &mut pretty::PrettyPrinter<W>,
+    use_compact_errors : bool,
+) -> io::Result<()> {
+    if use_compact_errors {
+        log::write_errors(printer, &self.files, &self.issues)
+    } else {
+        cli::write_errors(printer, &self.files, &self.issues)
+    }
+}
 
 /// Maintains a list of errors that occurred during compilation.
 #[derive(Default)]
