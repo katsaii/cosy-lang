@@ -1,7 +1,7 @@
 use std::path::{ Path, PathBuf };
 use std::fs;
 
-use crate::src::SourceMap;
+use crate::src::{ SourceMap, LoadFileResult, GetFileResult };
 use crate::error::{ Diagnostic, IssueManager };
 use crate::ir::{ ast, hir, casm };
 
@@ -13,12 +13,52 @@ use crate::ir::{ ast, hir, casm };
 ///
 /// Reports any errors to `issues`.
 pub fn build_module(
-    _files : &mut SourceMap,
-    _issues : &mut IssueManager,
-    _cache_dir : &Path,
-    _module_path : &Path,
+    files : &mut SourceMap,
+    issues : &mut IssueManager,
+    cache_dir : &Path,
+    module_path : &Path,
 ) -> Option<hir::Module> {
-    Some(hir::Module)
+    let result = match files.load_file_if_new_or_modified(module_path) {
+        LoadFileResult::Ok(ok) => Ok(ok),
+        LoadFileResult::OkUnchanged(file_id) => {
+            // load from cache
+            let cache_path = cache_dir.join(format!("{}.bin", file_id));
+            if let Ok(mut file) = fs::File::open(cache_path) {
+                let config = bincode::config::standard();
+                match bincode::decode_from_std_read(&mut file, config) {
+                    Ok(ok) => return Some(ok),
+                    Err(_) => (),
+                };
+            }
+            match files.get_existing_file(file_id) {
+                GetFileResult::Ok((_, file)) => Ok(file),
+                GetFileResult::ErrNotInManifest => unreachable!(),
+                GetFileResult::ErrIo(err) => Err(err),
+            }
+        },
+        LoadFileResult::ErrIo(err) => Err(err)
+    };
+    let file = match result {
+        Ok(ok) => ok,
+        Err(err) => {
+            Diagnostic::from(err)
+                .message(("failed to open module at path `{}`", [
+                    module_path.display().into(),
+                ]))
+                .report(issues);
+            return None;
+        },
+    };
+    let ast = ast::parse::from_file(issues, file.as_ref());
+    let hir = hir::lower::from_ast(issues, &ast);
+    // write to cache
+    let cache_path = cache_dir.join(format!("{}.bin", file.id));
+    let _ = fs::create_dir_all(cache_dir);
+    if let Ok(mut file) = fs::File::create(cache_path) {
+        let config = bincode::config::standard();
+        let _ = bincode::encode_into_std_write(&hir, &mut file, config);
+    }
+    Some(hir)
 }
 
 /// Takes the HIR modules of a Cosy package, and uses them to compile the

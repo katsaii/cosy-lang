@@ -6,34 +6,18 @@ pub mod lower;
 use std::io;
 use bincode;
 
-use crate::src::SourceMap;
-#[allow(unused_imports)] use crate::pretty::{ PrettyPrinter, Colour, Decoration };
+use crate::src::{ SourceMap, Located };
+use crate::pretty::{ PrettyPrinter, Colour, Decoration };
+
+pub use crate::ir::ast::{ Symbol, Visibility };
 
 #[derive(Debug, Default, bincode::Encode, bincode::Decode)]
-pub struct Module;
-
-/// Pretty prints Cosy HIR for debugging purposes.
-pub fn debug_write_hir<W : io::Write>(
-    printer : &mut PrettyPrinter<W>,
-    _files : &SourceMap,
-    module : &Module,
-) -> io::Result<()> {
-    printer.write(&format!("{:?}", module))?;
-    Ok(())
-}
-
-/*
-use crate::{ source::Located, vfs::Manifest };
-
-pub use crate::parse::ast::{ Symbol, Visibility };
-
-#[derive(Debug, Default, Encode, Decode)]
 pub struct Module {
     pub items : Vec<ModuleItem>,
 }
 
 /// Top-level declarations.
-#[derive(Debug, Encode, Decode)]
+#[derive(Debug, bincode::Encode, bincode::Decode)]
 pub struct ModuleItem {
     vis : Visibility,
     decl : Decl,
@@ -41,7 +25,7 @@ pub struct ModuleItem {
 
 /// All expressions available to Cosy. Note: this doesn't include constructs
 /// like `var`, since those are statements.
-#[derive(Debug, Encode, Decode)]
+#[derive(Debug, bincode::Encode, bincode::Decode)]
 pub enum Expr {
     NumIntegral(Located<u128>),
     NumRational(Located<Symbol>),
@@ -51,7 +35,7 @@ pub enum Expr {
 }
 
 /// All statements available to Cosy.
-#[derive(Debug, Encode, Decode)]
+#[derive(Debug, bincode::Encode, bincode::Decode)]
 pub enum Stmt {
     Decl(Decl),
     Expr(Expr),
@@ -63,11 +47,20 @@ pub enum Stmt {
 
 /// All declarations available to Cosy. Note: these should all be valid
 /// top-level declarations.
-#[derive(Debug, Encode, Decode)]
+#[derive(Debug, bincode::Encode, bincode::Decode)]
 pub enum Decl {
     Fn {
         name : Located<Symbol>,
         body : Box<Expr>,
     },
 }
-*/
+
+/// Pretty prints Cosy HIR for debugging purposes.
+pub fn debug_write_hir<W : io::Write>(
+    printer : &mut PrettyPrinter<W>,
+    _files : &SourceMap,
+    module : &Module,
+) -> io::Result<()> {
+    printer.write(&format!("{:?}", module))?;
+    Ok(())
+}

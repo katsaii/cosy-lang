@@ -51,6 +51,7 @@ pub(super) fn execute(mut cargs : super::CommonArgs, args : Args) {
             &cache_package,
             &root,
         ));
+        println!("{:?}", _hir);
         let casm = labelled_try!('task, build::build_package_casm(
             &mut issues,
             &cache_package,
