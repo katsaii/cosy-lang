@@ -15,8 +15,8 @@ pub(super) struct Args {
 }
 
 pub(super) fn execute(mut cargs : super::CommonArgs, args : Args) {
-    let mut files = SourceMap::default();
     let mut issues = IssueManager::default();
+    let mut files = SourceMap::default();
     'task: {
         let file = match files.load_file(&args.path) {
             Ok(ok) => ok,

@@ -2,19 +2,17 @@
 - build:
   - debug:
     - cache:
+      - manifest.bin  # stores module dependency info + metadata
       - main: # main package
         - 0.bin         # the typed HIR of main.cy (file ID = 0)
         - main.casm.bin # the CASM of the "main" package
         - main.o        # generated object file (for native builds)
-        - manifest.bin  # stores module dependency info + metadata
+        - main          # final executable for "main" package
       - utils: # utils package, may be used by main
         - 0.bin
         - utils.casm.bin
         - utils.o
-        - manifest.bin
-    - bin:
-      - main  # final executable for "main" package
-      - utils # final executable for "utils" package (if it has an entrypoint)
+        - utils # final executable for "utils" package (if it has an entrypoint)
   - release:
     # same as debug
   - generated:

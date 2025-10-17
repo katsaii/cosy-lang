@@ -1,8 +1,16 @@
 use std::path::PathBuf;
+use std::fs;
+
+use libcosyc::src::{ SourceMap, LoadManifestResult, SaveManifestResult };
+use libcosyc::error::{ cli, IssueManager };
+use libcosyc::build;
 
 /// Builds the package and immediately runs its entrypoint.
 #[derive(super::Args)]
 pub(super) struct Args {
+    /// The path to the cache directory. Defaults to `build/<config>/cache`.
+    #[arg(short, long="cache")]
+    cache_dir : Option<PathBuf>,
     /// Path to the package to build (defaults to the working directory):
     ///  * If the path is a `.cy` file, then that file will act as the entrypoint.
     ///  * If the path is a directory, then a file named `main.cy` will be used as the entrypoint.
@@ -10,92 +18,54 @@ pub(super) struct Args {
     package_path : PathBuf,
 }
 
-pub(super) fn execute(mut _cargs : super::CommonArgs, _args : Args) {
-    //let mut sess = Session::new();
-    //if let Some((name, entry)) = find_package_root(&mut sess, &args.package_path) {
-    //    build_package(&mut sess, name, entry);
-    //}
-    //err.submit(&sess);
-}
-/*
-fn find_package_root(sess : &mut Session, path : &Path) -> Option<(String, PathBuf)> {
-    let is_dir = match fs::metadata(path) {
-        Ok(meta) => meta.is_dir(),
-        Err(err) => {
-            Diagnostic::error()
-                .message(("failed to compile package with root `{}`", [path.display().into()]))
-                .note(("{}", [err.into()]))
-                .report(&mut sess.issues);
-            return None;
+// ...oh how i yearn for #![feature(try_blocks)]
+macro_rules! labelled_try {
+    ($label:lifetime, $computation:expr) => {
+        match $computation {
+            Some(x) => x,
+            None => break $label,
         }
+    }
+}
+
+pub(super) fn execute(mut cargs : super::CommonArgs, args : Args) {
+    let cache = args.cache_dir.unwrap_or_else(|| {
+        build::default_cache(build::Config::Debug)
+    });
+    fs::create_dir_all(&cache).unwrap();
+    let cache_manifest = cache.as_path().join("manifest.bin");
+    let mut issues = IssueManager::default();
+    let mut files = match SourceMap::load_from_path(&cache_manifest) {
+        LoadManifestResult::Ok(ok) => ok,
+        _ => SourceMap::new(),
     };
-    let (os_name, entry);
-    if is_dir {
-        // look for main.cy
-        os_name = path.file_name().unwrap();
-        let mut entry_ = path.to_owned();
-        entry_.push("main.cy");
-        entry = entry_;
-    } else {
-        // we're a file! use the filename
-        os_name = path.file_stem().unwrap();
-        entry = path.to_owned();
+    'task: {
+        let (name, root) = labelled_try!('task, build::find_package_root(
+            &mut issues,
+            &args.package_path,
+        ));
+        let cache_package = cache.as_path().join(&name);
+        let _hir = labelled_try!('task, build::build_module(
+            &mut files,
+            &mut issues,
+            &cache_package,
+            &root,
+        ));
+        let casm = labelled_try!('task, build::build_package_casm(
+            &mut issues,
+            &cache_package,
+        ));
+        let bc_path = labelled_try!('task, build::build_package_llvm(
+            &mut issues,
+            &cache_package,
+            &casm,
+        ));
+        let cache_bin = cache_package.as_path().join(&name);
+        if !build::link_program(
+            &mut issues,
+            &[bc_path],
+            &cache_bin,
+        ) { break 'task }
     }
-    let name = if let Some(name) = os_name.to_str() {
-        name.to_owned()
-    } else {
-        Diagnostic::error()
-            .message(("invalid package name {} is not a valid UTF-8 name", [format!("{:?}", os_name).into()]))
-            .report(&mut sess.issues);
-        return None;
-    };
-    Some((name, entry))
+    cli::write_errors(&mut cargs.printer, &mut files, &mut issues).unwrap();
 }
-
-fn build_package(sess : &mut Session, _name : String, entry : PathBuf) -> Option<()> {
-    let hir = build_hir_module(sess, &entry)?;
-    println!("HIR:\n{:?}", hir);
-    let casm = build_casm_package(sess, &hir)?;
-    println!("CASM:\n{:?}", casm);
-    build_llvm_target(sess, &casm)?;
-    Some(())
-}
-
-fn build_hir_module(sess : &mut Session, path : &Path) -> Option<hir::Module> {
-    let file_data = match sess.manifest.load(path) {
-        Ok(ok) => ok,
-        Err(err) => {
-            Diagnostic::error()
-                .message(("failed to open file `{}`", [path.display().into()]))
-                .note(("{}", [err.into()]))
-                .report(&mut sess.issues);
-            return None;
-        },
-    };
-    let ast = Parser::parse(&mut sess.issues, &file_data);
-    if sess.issues.has_errors() {
-        return None;
-    }
-    let hir = Ast2Hir::lower(&mut sess.issues, &ast);
-    if sess.issues.has_errors() {
-        return None;
-    }
-    Some(hir)
-}
-
-fn build_casm_package(sess : &mut Session, hir : &hir::Module) -> Option<casm::Package> {
-    let casm = Hir2Casm::lower(&mut sess.issues, &hir);
-    if sess.issues.has_errors() {
-        return None;
-    }
-    Some(casm)
-}
-
-fn build_llvm_target(sess : &mut Session, casm : &casm::Package) -> Option<()> {
-    llvm::emit_to_file(&mut sess.issues, casm, "cosy.bc".as_ref());
-    if sess.issues.has_errors() {
-        return None;
-    }
-    Some(())
-}
-*/

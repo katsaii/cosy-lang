@@ -7,17 +7,17 @@ use libcosyc::ir::ast;
 /// Parses the contents of a file and prints its untyped AST.
 #[derive(super::Args)]
 pub(super) struct Args {
-    /// Path of the `.cy` file to parse.
-    #[arg()]
-    path : PathBuf,
     /// Whether to lower the AST to HIR.
     #[arg(short, long)]
     lower : bool,
+    /// Path of the `.cy` file to parse.
+    #[arg()]
+    path : PathBuf,
 }
 
 pub(super) fn execute(mut cargs : super::CommonArgs, args : Args) {
-    let mut files = SourceMap::default();
     let mut issues = IssueManager::default();
+    let mut files = SourceMap::default();
     'task: {
         let file = match files.load_file(&args.path) {
             Ok(ok) => ok,
